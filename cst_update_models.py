@@ -5,7 +5,7 @@ import datetime
 import cst_model_reader_commented as cmr
 
 
-class update_cst_files:
+class model_updater:
     '''updates all cst files by the master files in a
        selected directory
        (corresponding folders will be copied too)
@@ -126,7 +126,7 @@ class update_cst_files:
 
 if __name__ == "__main__":
     def test0():
-        u = update_cst_files("C:/Users/Simon/Desktop/IHs_newDD_notBase",
+        u = model_updater("C:/Users/Simon/Desktop/IHs_newDD_notBase",
                              "C:/Users/Simon/Desktop/IHs_newDD/Tuner and Frequ")
 
     def test01():
