@@ -6,7 +6,7 @@ class CST_Model():
     '''Read and edit parameters of a cst file
        only read simple results
 
-       methods: getResultNames, getResult, getParam, editParam'''
+       methods: getResultNames, getResult, getParam, getParams, editParam'''
 
     def __init__(self, filename):
         ''' initializes the path of the cst file
@@ -118,6 +118,8 @@ class CST_Model():
         # selction only param_name and its value
         while True:
             try:
+                # abort when sum can be computed
+                # abort when all p[2] are evalu
                 sum([p[2] for p in self.params])
                 break
             except:
