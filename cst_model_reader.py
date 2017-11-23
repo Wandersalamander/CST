@@ -44,7 +44,10 @@ class CST_Model():
         return float(file.readline())
 
     def getParams(self):
-        '''returns all available parameter triplets as a list'''
+        '''returns all available parameter triplets as a list
+
+            as [parName, parEquation, parValue]
+        '''
         try:
             self.params
         except AttributeError:
