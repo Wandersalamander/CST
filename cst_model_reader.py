@@ -111,6 +111,7 @@ class CST_Model():
         file = open(self.ParamPath, mode='r')
         params = [clean(param_raw) for param_raw in file.readlines()]
         params = [param for param in params if param[1] != "-1\n"]
+        params = sorted(params, key=lambda x: -len(x[0]))
         # selction only param_name and its value
         self.params = params
         params = [param[0:2] + [evaluate(param[1])] for param in params]
@@ -119,7 +120,9 @@ class CST_Model():
         while True:
             try:
                 # abort when sum can be computed
-                # abort when all p[2] are evalu
+                # abort when all p[2] are evaluated
+                # print([p[2] for p in self.params])
+                # print()
                 sum([p[2] for p in self.params])
                 break
             except:
