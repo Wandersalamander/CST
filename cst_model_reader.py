@@ -141,12 +141,7 @@ class CST_Model():
         ''' parname: string, the parameter which should be returned
 
             returns list, [0]: name, [1]: formula, [2] value'''
-
-        if self.params:
-            names = [a[0] for a in self.params]
-            return self.params[names.index(paramname.lower())]
-        else:
-            self._loadParams()
+        self.getParams()
         names = [a[0] for a in self.params]
         return self.params[names.index(paramname.lower())]
 
