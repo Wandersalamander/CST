@@ -72,9 +72,9 @@ class model_updater:
         '''
         # self.skipParams = [x.lower() for x in skipParams]
         # assert isinstance(skipParams, list)
-        self.__move_to_subfolder()
-        self.__copy_from_master()
-        self.__update_parameters(method=method)
+        self._move_to_subfolder()
+        self._copy_from_master()
+        self._update_parameters(method=method)
 
     def __check_for_keys(self):
         '''checks if all required files are given by the master files
@@ -93,7 +93,7 @@ class model_updater:
                 raise FileNotFoundError(
                     "No files using keyword '" + key + "' found")
 
-    def __move_to_subfolder(self):
+    def _move_to_subfolder(self):
         '''moves all old files to a sub directory'''
         if self.mute is False:
             print("\n\n Moving outdated models to\n", self.subfolder, "\n\n")
@@ -105,7 +105,7 @@ class model_updater:
             shutil.move(from_file,
                         self.subfolder + from_file.split("/")[-1])
 
-    def __copy_from_master(self):
+    def _copy_from_master(self):
         '''adds master files to target directory
            by using the names as stated in old files'''
         if self.mute is False:
@@ -121,7 +121,7 @@ class model_updater:
             shutil.copyfile(src, to_file)
             shutil.copytree(src.split(".")[0], to_folder)
 
-    def __update_parameters(self, method="slow"):
+    def _update_parameters(self, method="slow"):
         '''updates the parameters in the newly copied
            (copied from master to target directory)
            files
@@ -136,14 +136,16 @@ class model_updater:
             to_cst = cmr.CST_Model(to_file)
             from_cst = cmr.CST_Model(from_file)
             for param in from_cst.getParams():
-                if param[0].lower() not in self.skipParams:
-                    to_cst.editParam(param[0], param[1])
+                # if param[0].lower() not in self.skipParams:
+                to_cst.editParam(param[0], param[1])
+            to_cst.rebuild()
 
         def slow(self, from_file, to_file):
-            par_path = "Model/3D/Model.par"
+            par_path = "/Model/3D/Model.par"
             from_par = from_file.split(".")[0] + par_path
-            flag = " -c -par " + from_par
-            cmd = self.cst_path + flag + " " + to_file
+            flag = " -c -par " + from_par + " "
+            cmd = self.cst_path + flag  + to_file
+            print(from_par)
             assert os.path.isfile(from_file)
             assert os.path.isfile(to_file)
             assert os.path.isfile(from_par)
