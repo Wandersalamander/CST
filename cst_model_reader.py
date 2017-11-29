@@ -1,5 +1,5 @@
 import functions as f
-import os
+import os, subprocess
 
 
 class CST_Model():
@@ -8,7 +8,7 @@ class CST_Model():
 
        methods: getResultNames, getResult, getParam, getParams, editParam'''
 
-    def __init__(self, filename):
+    def __init__(self, filename, cst_path=None):
         ''' initializes the path of the cst file
             and adds some internal variables
 
@@ -26,6 +26,10 @@ class CST_Model():
         self.ResultPath = "".join(self.ResultPath) + "/Result/"
         self.ParamPath = "".join(self.filename.split(
             ".")[:-1]) + "/Model/3D/" + "Model.par"
+        if cst_path:
+            self.cst_path = cst_path
+        else:
+            self.cst_path = "C:/Program Files (x86)/CST STUDIO SUITE 2017/CST DESIGN ENVIRONMENT.exe"
 
     def getResultNames(self, filetypes=[".rd0"]):
         ''' should return a list of all results in result path
@@ -243,6 +247,12 @@ class CST_Model():
         paramFile = open(self.ParamPath, "w")
         for l in lines:
             paramFile.write(l)
+
+    def rebuild(self):
+        '''CST History will be updated completely'''
+        falgs = " -m -rebuild "
+        cmd = self.cst_path + falgs + self.filename
+        subprocess.call(cmd)
 
 def TEST():
     path = "C:/Dropbox/Uni_privat/Master/Python/CST/Test/IH_10a_25mm_5Gaps.cst"
