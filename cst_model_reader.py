@@ -1,5 +1,6 @@
 import functions as f
-import os, subprocess
+import os
+import subprocess
 
 
 class CST_Model():
@@ -17,7 +18,8 @@ class CST_Model():
         if not os.path.isfile(filename):
             raise FileNotFoundError(filename + "not found")
 
-        self.filename = filename
+        self.filename = filename.replace("\\", "/")
+        self.FilePath = "/".join(filename.split("/")[:-1]) + "/"
         self.name = self.filename.split(
             "/")[-1]
         self.ResultPath = self.filename.split(
@@ -149,7 +151,7 @@ class CST_Model():
         names = [a[0] for a in self.params]
         return self.params[names.index(paramname.lower())]
 
-    def editParam(self, Paramname, value):
+    def editParam(self, Paramname, value, method="scary"):
         '''edits the parameter value in the cst parameter file
            This Script was created for CST 2017
 
@@ -158,101 +160,67 @@ class CST_Model():
             value: int or float, value which should be assigned to parameter
 
             returns None'''
-        def count_rightnext(string, letter=" ", notLetter=False):
-            ''' letter: string, which letter should be counted
 
-                notLetter:  bool, inverts the logic,
-                            i.e counts if the letter not occurs
+        def scary(self, Paramname, value):
+            # the parameter file is a 771 chars long file ?
+            # all chars where i < 256 belong to the parameter name ?
+            # all chars where  255 < i < 513 belong to the equation ?
+            # all chars where i < 512 belong to comment ?
+            paramFile = open(self.ParamPath, "r")
+            #  asserting its the pure paramname
+            Paramname = " " + Paramname + " "
+            assert self.ParamPath[-4:] == ".par"
+            lines = paramFile.readlines()
+            count = 0  # we only want to find one line
+            name_end_idx = 255
+            for i, line in zip(range(len(lines)), lines):
+                assert len(line) == 771
+                if\
+                        Paramname.upper() in line[:name_end_idx + 2].upper()\
+                        and\
+                        line.replace(" ", "")[-3:-1] != "-1":
+                    index = i
+                    count += 1
+            assert count == 1
+            __v = str(value)
+            if len(__v) > 255:
+                print(__v)
+                raise AttributeError("value length bigger than 255")
+            # keeping name and comment
+            newline = lines[index][:256] + " " * \
+                (512 - 255 - len(__v)) + __v + lines[index][513:]
+            lines[index] = newline
+            assert len(newline) == 771
+            paramFile.close()
+            paramFile = open(self.ParamPath, "w")
+            for l in lines:
+                paramFile.write(l)
 
-                retunrs int, how many letters where counted'''
-            assert len(letter) == 1
-            for i, ltr in enumerate(string):
-                if notLetter is False:
-                    if ltr != letter:
-                        return i  # space length
-                if notLetter is True:
-                    if ltr == letter:
-                        return i  # wordlenth
-        # the parameter file is a 771 chars long file ?
-        # all chars where i < 256 belong to the parameter name ?
-        # all chars where  255 < i < 513 belong to the equation ?
-        # all chars where i < 512 belong to comment ?
-        paramFile = open(self.ParamPath, "r")
-
-        Paramname = " " + Paramname + " "  # asserting its the pure paramname
-        assert self.ParamPath[-4:] == ".par"
-        lines = paramFile.readlines()
-        count = 0  # we only want to find one line
-        name_end_idx = 255
-        for i, line in zip(range(len(lines)), lines):
-            assert len(line) == 771
-            if Paramname.upper() in line[:name_end_idx + 2].upper() and line.replace(" ", "")[-3:-1] != "-1":
-                index = i
-                count += 1
-        assert count == 1
-        # tester1 = []
-        # tester2 = ""
-        # for i in range(len(lines[index])):
-        #     if lines[index][i] != " ":
-        #         tester1.append(str(i))
-        #         tester2 += str(lines[index][i])
-        # print("tester")
-        # print(tester1)
-        # countt = 0
-        # for x in range(500):
-        #     if (x) > 255 and (x) < 513:
-        #         countt += 1
-        # print("word length needed", countt)
-        # print(tester2)
-        # print([x for x in lines[index].split(" ") if x != ""])
-        # a = lines[index].upper().index(Paramname[1:-1].upper())
-        # assert a + len(Paramname[1:-1]) - 1 == name_end_idx
-        # next_letter_space = count_rightnext(
-        #     lines[index][name_end_idx + 1:])  # "val     32" returns 5
-        # b = lines[index][name_end_idx + next_letter_space + 1:]
-        # # count to next spaces ie "102.1  " returns 4
-        # c = count_rightnext(b, notLetter=True)
-        # val_end_index = name_end_idx + next_letter_space + c
-        # print("a", a)
-        # print("b", b)
-        # print("c", c)
-        # print(name_end_idx, next_letter_space, c)
-        # print("val_end_index", val_end_index)
-        # assert val_end_index == 512
-        # # print("old", lines[index][val_end_index-10:val_end_index+10])
-        # word = str(value)
-        # newline = lines[index][:val_end_index -
-        #                        len(word) + 1] + word + lines[index][val_end_index + 1:]
-        # locked = True
-        # i = 1
-        # while locked:
-        #     try:
-        #         assert lines[index][:val_end_index - len(word) + 1][-i] == " "
-        #         locked = False
-        #     except:
-        #         newline = lines[index][:val_end_index -
-        #                                len(word) + 1 - i] + i * " " + word + lines[index][val_end_index + 1:]
-
-        #         i += 1
-        # print("new", newline[val_end_index-10:val_end_index+10],"\n")
-        __v = str(value)
-        if len(__v) > 255:
-            print(__v)
-            raise AttributeError("value length bigger than 255")
-        # keeping name and comment
-        newline = lines[index][:256] + " " * (512 - 255 -len(__v)) + __v + lines[index][513:]
-        lines[index] = newline
-        assert len(newline) == 771
-        paramFile.close()
-        paramFile = open(self.ParamPath, "w")
-        for l in lines:
-            paramFile.write(l)
+        def slow(self, Paramname, value):
+            filename = self.FilePath + "par_tmp.par"
+            file = open(filename, "w")
+            file.write(Paramname + "\t\t\t" + str(value))
+            file.close()
+            flag = " -c -par " + filename + " "
+            cmd = self.cst_path + flag + self.filename
+            print(cmd)
+            assert os.path.isfile(filename)
+            assert os.path.isfile(self.filename)
+            subprocess.call(cmd)
+            os.remove(filename)
+        methods = ["slow", "scary"]
+        assert method in methods
+        if method == "slow":
+            slow(self, Paramname, value)
+        elif method == "scary":
+            scary(self, Paramname, value)
 
     def rebuild(self):
         '''CST History will be updated completely'''
         falgs = " -m -rebuild "
         cmd = self.cst_path + falgs + self.filename
         subprocess.call(cmd)
+
 
 def TEST():
     path = "C:/Dropbox/Uni_privat/Master/Python/CST/Test/IH_10a_25mm_5Gaps.cst"
