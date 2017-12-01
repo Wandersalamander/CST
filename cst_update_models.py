@@ -144,7 +144,7 @@ class model_updater:
             par_path = "/Model/3D/Model.par"
             from_par = from_file.split(".")[0] + par_path
             flag = " -c -par " + from_par + " "
-            cmd = self.cst_path + flag  + to_file
+            cmd = self.cst_path + flag + to_file
             print(from_par)
             assert os.path.isfile(from_file)
             assert os.path.isfile(to_file)
@@ -153,7 +153,7 @@ class model_updater:
         methods = ["slow", "scary"]
         assert method in methods
         if self.mute is False:
-            print('''\n\nReading parameters from outdated file 
+            print('''\n\nReading parameters from outdated file
                 and writing it to renamed master
                 files to target_directory\n\n''')
         for to_file in self.files:
@@ -166,17 +166,4 @@ class model_updater:
 
 
 if __name__ == "__main__":
-    def test0():
-        u = model_updater("C:/Users/Simon/Desktop/IHs_newDD_notBase",
-                          "C:/Users/Simon/Desktop/IHs_newDD/Tuner and Frequ")
-
-    def test01():
-        subfolder = "C:/Dropbox/Uni_privat/Master/Python/CST/TEST/OLD/201710181453/"
-        for to_file in f.get_files("C:/Dropbox/Uni_privat/Master/Python/CST/TEST", ".cst"):
-            to_cst = cmr.CST_Model(to_file)
-            from_cst = cmr.CST_Model(subfolder + to_file.split("/")[-1])
-            for param in from_cst.getParams():
-                print(param)
-                print(param[0], param[1])
-                to_cst.editParam(param[0], param[1])
-    test0()
+    pass
