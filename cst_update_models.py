@@ -59,7 +59,7 @@ class model_updater:
         # self.rebase()
 
     # def rebase(self, skipParams=[]):
-    def rebase(self, method="slow"):
+    def rebase(self, method="slow", comment):
         '''updates all cavitys using the new master file
 
             skipParams: list, ignores the given parameter names
@@ -73,6 +73,7 @@ class model_updater:
         # self.skipParams = [x.lower() for x in skipParams]
         # assert isinstance(skipParams, list)
         self._move_to_subfolder()
+        self._write_changelog(comment)
         self._copy_from_master()
         self._update_parameters(method=method)
 
@@ -92,6 +93,11 @@ class model_updater:
             if src is None:
                 raise FileNotFoundError(
                     "No files using keyword '" + key + "' found")
+
+    def _write_changelog(self, comment):
+        file = open(self.subfolder + "changelog.txt", "w")
+        file.write(str(comment))
+        file.close()
 
     def _move_to_subfolder(self):
         '''moves all old files to a sub directory'''
