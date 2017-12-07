@@ -59,7 +59,7 @@ class model_updater:
         # self.rebase()
 
     # def rebase(self, skipParams=[]):
-    def rebase(self, method="slow", comment):
+    def rebase(self, method="slow", comment="Uncommented"):
         '''updates all cavitys using the new master file
 
             skipParams: list, ignores the given parameter names
