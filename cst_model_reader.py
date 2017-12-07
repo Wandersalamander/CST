@@ -44,8 +44,12 @@ class CST_Model():
         # removing long path to display only the names of the files
         return [filename.split("/")[-1] for filename in filepaths]
 
-    def getResult(self, Resultname):
+    def getResult(self, Resultname, filetype=".rd0"):
         '''returns float of Result value from rd0-file'''
+        if Resultname[-4] != filetype:
+            splt = Resultname.split(".")
+            assert len(splt) <= 2
+            Resultname = splt[0] + filetype
         file = open(self.ResultPath + Resultname, mode='r')
         return float(file.readline())
 
