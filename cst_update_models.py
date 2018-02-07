@@ -144,7 +144,7 @@ class model_updater:
             for param in from_cst.getParams():
                 # if param[0].lower() not in self.skipParams:
                 to_cst.editParam(param[0], param[1])
-            to_cst.rebuild()
+            to_cst.cst_rebuild()
 
         def slow(self, from_file, to_file):
             par_path = "/Model/3D/Model.par"

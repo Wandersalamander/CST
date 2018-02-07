@@ -205,12 +205,12 @@ class CST_Model():
             file = open(filename, "w")
             file.write(Paramname + "\t\t\t" + str(value))
             file.close()
-            flag = " -c -par " + filename + " "
-            cmd = self.cst_path + flag + self.filename
-            print(cmd)
-            assert os.path.isfile(filename)
+            # flag = " -c -par " + filename + " "
+            # cmd = self.cst_path + flag + self.filename
+            # print(cmd)
             assert os.path.isfile(self.filename)
-            subprocess.call(cmd)
+            # subprocess.call(cmd)
+            self.cst_import_parfile(filename)
             os.remove(filename)
         methods = ["slow", "scary"]
         assert method in methods
@@ -219,11 +219,45 @@ class CST_Model():
         elif method == "scary":
             scary(self, Paramname, value)
 
-    def rebuild(self):
-        '''CST History will be updated completely'''
-        falgs = " -m -rebuild "
-        cmd = self.cst_path + falgs + self.filename
+    def _run(self, flags, dc=None):
+        ''' Use flags as specified in
+            cst manual chapter "command line options"
+
+            dc: str, distributed comuting as "maincontroller:port"
+        '''
+        if dc:
+            flags += "-withdc=" + str(dc) + " "
+        cmd = self.cst_path + flags + self.filename
         subprocess.call(cmd)
+
+    def cst_rebuild(self):
+        '''CST History will be updated completely'''
+        flags = " -m -rebuild "
+        self._run(flags)
+        # cmd = self.cst_path + flags + self.filename
+        # subprocess.call(cmd)
+
+    def cst_run_eigenmode(self, dc=None):
+        '''runs eigenmode solver for the model'''
+        flags = " -m -e "
+        self._run(flags, dc)
+        # cmd = self.cst_path + flags + self.filename
+        # subprocess.call(cmd)
+
+    def cst_run_optimizer(self, dc=None):
+        '''runs microwave studio optimizer for the model'''
+        flags = " -m -o "
+        self._run(flags, dc)
+        # cmd = self.cst_path + flags + self.filename
+        # subprocess.call(cmd)
+
+    def cst_import_parfile(self, parfile):
+        assert os.path.isfile(parfile)
+        flags = " -c -par " + parfile + " "
+        self._run(flags)
+
+    def export_csv(self):
+        pass
 
 
 def TEST():
