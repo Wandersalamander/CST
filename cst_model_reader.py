@@ -1,7 +1,7 @@
 import functions as f
 import os
 import subprocess
-
+import cst_model_reader_config as config
 
 class CST_Model():
     '''Read and edit parameters of a cst file
@@ -31,7 +31,7 @@ class CST_Model():
         if cst_path:
             self.cst_path = cst_path
         else:
-            self.cst_path = "C:/Program Files (x86)/CST STUDIO SUITE 2017/CST DESIGN ENVIRONMENT.exe"
+            self.cst_path = config.cst_path
 
     def getResultNames(self, filetypes=[".rd0"]):
         ''' should return a list of all results in result path
@@ -46,6 +46,8 @@ class CST_Model():
 
     def getResult(self, Resultname, filetype=".rd0"):
         '''returns float of Result value from rd0-file'''
+        if filetype != ".rd0":
+            raise FileExistsError("Resulttype not implemented yet")
         if Resultname[-4] != filetype:
             splt = Resultname.split(".")
             assert len(splt) <= 2
@@ -231,32 +233,56 @@ class CST_Model():
         subprocess.call(cmd)
 
     def cst_rebuild(self):
-        '''CST History will be updated completely'''
+        ''' CST History will be updated completely
+            
+            flags = " -m -rebuild
+
+            returns None"
+        '''
         flags = " -m -rebuild "
         self._run(flags)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
     def cst_run_eigenmode(self, dc=None):
-        '''runs eigenmode solver for the model'''
+        ''' runs eigenmode solver for the model
+
+            flags = " -m -e "
+            dc: str, distributed comuting as "maincontroller:port"
+
+            returns None
+        '''
         flags = " -m -e "
         self._run(flags, dc)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
     def cst_run_optimizer(self, dc=None):
-        '''runs microwave studio optimizer for the model'''
+        ''' runs microwave studio optimizer for the model
+
+            flags = " -m -o "
+            dc: str, distributed comuting as "maincontroller:port"
+
+            returns None
+        '''
         flags = " -m -o "
         self._run(flags, dc)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
     def cst_import_parfile(self, parfile):
+        ''' runs microwave studio optimizer for the model
+
+            flags = " -c -par " + parfile + " "
+
+            returns None
+        '''
         assert os.path.isfile(parfile)
         flags = " -c -par " + parfile + " "
         self._run(flags)
 
     def export_csv(self):
+        print("export not implemented yet")
         pass
 
 
