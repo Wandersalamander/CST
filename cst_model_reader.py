@@ -3,6 +3,7 @@ import os
 import subprocess
 import cst_model_reader_config as config
 
+
 class CST_Model():
     '''Read and edit parameters of a cst file
        only read simple results
@@ -32,6 +33,12 @@ class CST_Model():
             self.cst_path = cst_path
         else:
             self.cst_path = config.cst_path
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.filename
 
     def getResultNames(self, filetypes=[".rd0"]):
         ''' should return a list of all results in result path
@@ -226,6 +233,7 @@ class CST_Model():
             cst manual chapter "command line options"
 
             dc: str, distributed comuting as "maincontroller:port"
+                     like "142.2.245.136:360000"
         '''
         if dc:
             flags += "-withdc=" + str(dc) + " "
@@ -234,7 +242,7 @@ class CST_Model():
 
     def cst_rebuild(self):
         ''' CST History will be updated completely
-            
+
             flags = " -m -rebuild
 
             returns None"
@@ -248,7 +256,8 @@ class CST_Model():
         ''' runs eigenmode solver for the model
 
             flags = " -m -e "
-            dc: str, distributed comuting as "maincontroller:port"
+            dc: str, distributed comuting as "maincontroller:port" like
+                     "142.2.245.136:360000"
 
             returns None
         '''
@@ -261,7 +270,8 @@ class CST_Model():
         ''' runs microwave studio optimizer for the model
 
             flags = " -m -o "
-            dc: str, distributed comuting as "maincontroller:port"
+            dc: str, distributed comuting as "maincontroller:port" like
+                     "142.2.245.136:360000"
 
             returns None
         '''
