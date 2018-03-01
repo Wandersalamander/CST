@@ -1,7 +1,7 @@
 import functions as f
 import os
 import subprocess
-import cst_model_reader_config as config
+from cst_model_reader_config import config
 
 
 class CST_Model():
@@ -17,7 +17,13 @@ class CST_Model():
             returns None'''
 
         if not os.path.isfile(filename):
-            raise FileNotFoundError(filename + "not found")
+            raise FileNotFoundError(
+                filename + "not found"
+            )
+        if " " in filename:
+            raise Warning(
+                '''Please remove spaces from filename'''
+            )
 
         self.filename = filename.replace("\\", "/")
         self.FilePath = "/".join(filename.split("/")[:-1]) + "/"
@@ -238,7 +244,9 @@ class CST_Model():
         if dc:
             flags += "-withdc=" + str(dc) + " "
         cmd = self.cst_path + flags + self.filename
-        subprocess.call(cmd)
+        returncode = subprocess.call(cmd)
+        if returncode != 0:
+            print(self.__str__(), "returncode", returncode)
 
     def cst_rebuild(self):
         ''' CST History will be updated completely
