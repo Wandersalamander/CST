@@ -3,6 +3,7 @@ import shutil
 import os
 import datetime
 import cst_model_reader as cmr
+from cst_model_reader_config import config
 import subprocess
 
 
@@ -11,7 +12,7 @@ class model_updater:
        selected directory
        (corresponding folders will be copied too)
 
-       PARAMETERS should be PERSISTENT while moving
+       PARAMETERS should be PERSISTENT whilst moving
        results etc. to a subfolder
 
        keys: iterable, linking the file read and written to.
@@ -31,7 +32,7 @@ class model_updater:
         if cst_path:
             self.cst_path = cst_path
         else:
-            self.cst_path = "C:/Program Files (x86)/CST STUDIO SUITE 2017/CST DESIGN ENVIRONMENT.exe"
+            self.cst_path = config.cst_path
         self.keys = keys
         self.target_directory = target_directory
         assert target_directory[-1] != "/"
