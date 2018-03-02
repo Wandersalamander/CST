@@ -343,6 +343,46 @@ class CST_Model():
         print("export not implemented yet")
         pass
 
+    def sweep(self, Paramname, values, dc=None, flags=None):
+        ''' Will perform a Eigenmode Sweep on the given values.
+            Seperate Instances of CST will be called
+            in order to perfom.
+
+            The Sweep will be performed, after completion
+            the value will be set to the initial
+            value before sweeping.
+
+            Paramname: str, the selected parameter to sweep
+
+            values: iterable(float or int), the values to sweep over
+
+            dc: str, distributed comuting as "maincontroller:port" like
+                     "142.2.245.136:360000"
+
+            flags: refer to module _run()
+        '''
+
+        def check_args():
+            assert isinstance(str, Paramname)
+            for v in values:
+                assert isinstance(float, v) or isinstance(int, v)
+
+        check_args()
+        self.message(str(self), "sweeping", Paramname)
+        value_init = self.getParam(Paramname)[1]
+        self.message("\tInitial value", value_init)
+        for value in values:
+            self.editParam(Paramname, value)
+            self.cst_rebuild()
+            if flags:
+                self._run(flags, dc)
+            else:
+                self.cst_run_eigenmode(dc)
+        # resetting to initial value
+        self.message(str(self), "resetting to initial value")
+        self.editParam(Paramname, value_init)
+        self.cst_rebuild()
+
 
 def TEST():
     path = "C:/Dropbox/Uni_privat/Master/Python/CST/Test/IH_10a_25mm_5Gaps.cst"
