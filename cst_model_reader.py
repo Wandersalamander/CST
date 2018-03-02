@@ -15,6 +15,7 @@ class CST_Model():
             and adds some internal variables
 
             returns None'''
+        self.verbose = True
 
         if not os.path.isfile(filename):
             raise FileNotFoundError(
@@ -24,7 +25,6 @@ class CST_Model():
             raise Warning(
                 '''Please remove spaces from filename'''
             )
-
         self.filename = filename.replace("\\", "/")
         self.FilePath = "/".join(filename.split("/")[:-1]) + "/"
         self.name = self.filename.split(
@@ -41,10 +41,31 @@ class CST_Model():
             self.cst_path = config.cst_path
 
     def __str__(self):
-        return self.name
+        return self.name.split(".")[0]
 
     def __repr__(self):
         return self.filename
+
+    def message(self, *args):
+        '''prints a message if self.verbose set to True
+        '''
+        if self.verbose:
+            msg = ""
+            for arg in args:
+                msg += str(arg) + " "
+            msg.strip()
+            print(msg)
+
+    def toggle_mute(self, silent=False):
+        self.verbose = not self.verbose
+        if self.verbose:
+            if not silent:
+                print("Unmuted")
+        elif not self.verbose:
+            if not silent:
+                print("Muted")
+        else:
+            raise Exception("self.verbose is not bool", self.verbose)
 
     def getResultNames(self, filetypes=[".rd0"]):
         ''' should return a list of all results in result path
@@ -136,6 +157,8 @@ class CST_Model():
                 return eval(str(equation).replace("^", "**"))
             except NameError:
                 return equation
+
+        self.message(str(self), "loading Parameters")
         file = open(self.ParamPath, mode='r')
         params = [clean(param_raw) for param_raw in file.readlines()]
         params = [param for param in params if param[1] != "-1\n"]
@@ -162,13 +185,13 @@ class CST_Model():
         # params = [param[0:2] + [evaluate2(param[2])] for param in params]
         # self.params = params
 
-    def getParam(self, paramname):
+    def getParam(self, Paramname):
         ''' parname: string, the parameter which should be returned
 
             returns list, [0]: name, [1]: formula, [2] value'''
         self.getParams()
         names = [a[0] for a in self.params]
-        return self.params[names.index(paramname.lower())]
+        return self.params[names.index(Paramname.lower())]
 
     def editParam(self, Paramname, value, method="scary"):
         '''edits the parameter value in the cst parameter file
@@ -229,6 +252,7 @@ class CST_Model():
             os.remove(filename)
         methods = ["slow", "scary"]
         assert method in methods
+        self.message(str(self), "setting", Paramname, "to", value)
         if method == "slow":
             slow(self, Paramname, value)
         elif method == "scary":
@@ -238,12 +262,16 @@ class CST_Model():
         ''' Use flags as specified in
             cst manual chapter "command line options"
 
+            flags: str
+
             dc: str, distributed comuting as "maincontroller:port"
                      like "142.2.245.136:360000"
         '''
         if dc:
             flags += "-withdc=" + str(dc) + " "
         cmd = self.cst_path + flags + self.filename
+        self.message(str(self), "running command:\n\t", cmd)
+
         returncode = subprocess.call(cmd)
         if returncode != 0:
             print(self.__str__(), "returncode", returncode)
@@ -256,7 +284,10 @@ class CST_Model():
             returns None"
         '''
         flags = " -m -rebuild "
+        self.message(str(self), "rebuilding")
+        self.toggle_mute(silent=True)
         self._run(flags)
+        self.toggle_mute(silent=True)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
@@ -270,7 +301,10 @@ class CST_Model():
             returns None
         '''
         flags = " -m -e "
-        self._run(flags, dc)
+        self.message(str(self), "running Eigenmode Solver")
+        self.toggle_mute(silent=True)
+        self._run(flags)
+        self.toggle_mute(silent=True)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
@@ -284,7 +318,10 @@ class CST_Model():
             returns None
         '''
         flags = " -m -o "
-        self._run(flags, dc)
+        self.message(str(self), "running Eigenmode optimizer")
+        self.toggle_mute(silent=True)
+        self._run(flags)
+        self.toggle_mute(silent=True)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
@@ -297,7 +334,10 @@ class CST_Model():
         '''
         assert os.path.isfile(parfile)
         flags = " -c -par " + parfile + " "
+        self.message(str(self), "importing parameter from\n\t", parfile)
+        self.toggle_mute(silent=True)
         self._run(flags)
+        self.toggle_mute(silent=True)
 
     def export_csv(self):
         print("export not implemented yet")
