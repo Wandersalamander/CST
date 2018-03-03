@@ -28,8 +28,6 @@ class CST_Model:
             )
         self.filename = filename.replace("\\", "/")
         self.FilePath = "/".join(filename.split("/")[:-1]) + "/"
-        self.name = self.filename.split(
-            "/")[-1]
         self.ResultPath = self.filename.split(
             ".")[:-1]  # removing fileextension
         # navigating to subfolder of file
@@ -48,9 +46,11 @@ class CST_Model:
                 self.cst_path = config.cst_path
             except AttributeError:
                 config.__init__()
+                self.cst_path = config.cst_path
 
     def __str__(self):
-        return self.name.split(".")[0]
+        return self.filename.split(
+            "/")[-1].split(".")[0]
 
     def __repr__(self):
         return self.filename
@@ -288,9 +288,9 @@ class CST_Model:
     def cst_rebuild(self):
         ''' CST History will be updated completely
 
-            flags = " -m -rebuild
+            flags = " -m -rebuild"
 
-            returns None"
+            returns None
         '''
         flags = " -m -rebuild "
         self.message(str(self), "rebuilding")
@@ -453,7 +453,8 @@ class parfile:
                 answer = autoanswer
             else:
                 answer = input("[Y/n] Recover parameters from parfile?")
-            if answer == "Y":
+            if answer == "Y" or "y":
+                self._master_cav.message("Recovering")
                 self.recover()
             else:
                 self._master_cav.message("Removing", self._path_backup)
