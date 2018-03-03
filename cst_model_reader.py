@@ -1,10 +1,11 @@
 import functions as f
 import os
+import shutil
 import subprocess
 from cst_model_reader_config import config
 
 
-class CST_Model():
+class CST_Model:
     '''Read and edit parameters of a cst file
        only read simple results
 
@@ -33,8 +34,13 @@ class CST_Model():
             ".")[:-1]  # removing fileextension
         # navigating to subfolder of file
         self.ResultPath = "".join(self.ResultPath) + "/Result/"
-        self.ParamPath = "".join(self.filename.split(
-            ".")[:-1]) + "/Model/3D/" + "Model.par"
+        # self.ParamPath = "".join(self.filename.split(
+        #     ".")[:-1]) + "/Model/3D/" + "Model.par"
+        self.parfile0 = parfile(
+            path="".join(self.filename.split(".")[:-1]) +
+            "/Model/3D/Model.par",
+            master_cav=self
+        )
         if cst_path:
             self.cst_path = cst_path
         else:
@@ -159,7 +165,7 @@ class CST_Model():
                 return equation
 
         self.message(str(self), "loading Parameters")
-        file = open(self.ParamPath, mode='r')
+        file = open(self.parfile0.path, mode='r')
         params = [clean(param_raw) for param_raw in file.readlines()]
         params = [param for param in params if param[1] != "-1\n"]
         params = sorted(params, key=lambda x: -len(x[0]))
@@ -208,10 +214,10 @@ class CST_Model():
             # all chars where i < 256 belong to the parameter name ?
             # all chars where  255 < i < 513 belong to the equation ?
             # all chars where i < 512 belong to comment ?
-            paramFile = open(self.ParamPath, "r")
+            paramFile = open(self.parfile0.path, "r")
             #  asserting its the pure paramname
             Paramname = " " + Paramname + " "
-            assert self.ParamPath[-4:] == ".par"
+            assert self.parfile0.path[-4:] == ".par"
             lines = paramFile.readlines()
             count = 0  # we only want to find one line
             name_end_idx = 255
@@ -234,7 +240,7 @@ class CST_Model():
             lines[index] = newline
             assert len(newline) == 771
             paramFile.close()
-            paramFile = open(self.ParamPath, "w")
+            paramFile = open(self.parfile0.path, "w")
             for l in lines:
                 paramFile.write(l)
 
@@ -303,7 +309,7 @@ class CST_Model():
         flags = " -m -e "
         self.message(str(self), "running Eigenmode Solver")
         self.toggle_mute(silent=True)
-        self._run(flags)
+        self._run(flags, dc=dc)
         self.toggle_mute(silent=True)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
@@ -320,21 +326,21 @@ class CST_Model():
         flags = " -m -o "
         self.message(str(self), "running Eigenmode optimizer")
         self.toggle_mute(silent=True)
-        self._run(flags)
+        self._run(flags, dc=dc)
         self.toggle_mute(silent=True)
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
-    def cst_import_parfile(self, parfile):
+    def cst_import_parfile(self, parfilepath):
         ''' runs microwave studio optimizer for the model
 
-            flags = " -c -par " + parfile + " "
+            flags = " -c -par " + parfilepath + " "
 
             returns None
         '''
-        assert os.path.isfile(parfile)
-        flags = " -c -par " + parfile + " "
-        self.message(str(self), "importing parameter from\n\t", parfile)
+        assert os.path.isfile(parfilepath)
+        flags = " -c -par " + parfilepath + " "
+        self.message(str(self), "importing parameter from\n\t", parfilepath)
         self.toggle_mute(silent=True)
         self._run(flags)
         self.toggle_mute(silent=True)
@@ -363,15 +369,17 @@ class CST_Model():
         '''
 
         def check_args():
-            assert isinstance(str, Paramname)
+            assert isinstance(Paramname, str)
             for v in values:
-                assert isinstance(float, v) or isinstance(int, v)
+                assert isinstance(v, float) or isinstance(v, int)
 
         check_args()
         self.message(str(self), "sweeping", Paramname)
-        value_init = self.getParam(Paramname)[1]
-        self.message("\tInitial value", value_init)
-        for value in values:
+        # value_init = self.getParam(Paramname)[1]
+        self.parfile0.backup()
+        # self.message("\tInitial value", value_init)
+        for run, value in enumerate(values):
+            self.message("\nRun", run, "/", len(value))
             self.editParam(Paramname, value)
             self.cst_rebuild()
             if flags:
@@ -380,8 +388,73 @@ class CST_Model():
                 self.cst_run_eigenmode(dc)
         # resetting to initial value
         self.message(str(self), "resetting to initial value")
-        self.editParam(Paramname, value_init)
-        self.cst_rebuild()
+        self.parfile0.recover()
+        # self.editParam(Paramname, value_init)
+        # self.cst_rebuild()
+
+
+class parfile:
+    '''Class to handle parfile
+
+        path: str, path to "Model.par"
+
+        master_cav: CST_Model, model corresponding to parfile
+
+       Attributes:
+
+        path: str, Path to Model.par
+
+       Routines:
+
+        backup()
+        recover()
+
+
+    '''
+
+    def __init__(self, path, master_cav):
+        self._filetype = ".par"
+        self._filetype_backup = ".parbackup"
+        assert path[-len(self._filetype):] == self._filetype
+        assert isinstance(master_cav, CST_Model)
+        assert os.path.isfile(path)
+        self._master_cav = master_cav
+        self.path = path
+        self._path_backup = \
+            self.path[:-len(self._filetype)] + \
+            self._filetype_backup
+        self.__handle_existing_backup()
+
+    def backup(self):
+        '''Copies /3D/Model/Model.par to Model.parbackup.
+        '''
+        shutil.copyfile(self.path, self._path_backup)
+
+    def recover(self):
+        '''Replaces content of /3D/Model/Model.par
+           by content of Model.parbackup
+           and rebuilds correspinding cst file.
+        '''
+        assert os.path.isfile(self._path_backup)
+        os.remove(self.path)
+        os.rename(self._path_backup, self.path)
+        self._master_cav.cst_rebuild()
+
+    def __handle_existing_backup(self, autoanswer=None):
+        '''Deals with a existing parfile backup
+           by asking to recover
+        '''
+        if os.path.isfile(self._path_backup):
+            self._master_cav.message("A parfile backup has been detected")
+            if autoanswer:
+                answer = autoanswer
+            else:
+                answer = input("[Y/n] Recover parameters from parfile?")
+            if answer == "Y":
+                self.recover()
+            else:
+                self._master_cav.message("Removing", self._path_backup)
+                os.remove(self._path_backup)
 
 
 def TEST():
