@@ -274,6 +274,26 @@ class CST_Model:
         names = [a[0] for a in self.params]
         return self.params[names.index(Paramname.lower())]
 
+    def isParam(self, Paramname):
+        '''Check if parameter is existing
+
+        Parameters
+        ----------
+        Paramnmane : str
+            the parameter to be checked
+
+        Returns
+        -------
+        bool
+            True if parameter exists
+            else Flase
+
+        '''
+        try:
+            self.getParam(Paramname)
+            return True
+        except ValueError:
+            return False
     def editParam(self, Paramname, value, method="scary"):
         '''Edits the parameter value.
 
@@ -353,6 +373,7 @@ class CST_Model:
             os.remove(filename)
         methods = ["slow", "scary"]
         assert method in methods
+        assert self.isParam(Paramname)
         self.message(str(self), "setting", Paramname, "to", value)
         if method == "slow":
             slow(self, Paramname, value)
@@ -612,6 +633,8 @@ def TEST():
     ih = CST_Model(path)
     names = ih.getResultNames()
     ih._loadParams()
+    assert ih.isParam("lackschmack") is False
+    assert ih.isParam("Mesh_model") is True
     # for a in ih.params:
     #     print(a)
     # print(ih.getParam("tuner_stem_angle"))
