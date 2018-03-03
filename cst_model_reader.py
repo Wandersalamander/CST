@@ -462,14 +462,14 @@ class parfile:
 
 
 def TEST():
-    path = "C:/Dropbox/Uni_privat/Master/Python/CST/Test/IH_10a_25mm_5Gaps.cst"
-    ih_12a = CST_Model(path)
-    names = ih_12a.getResultNames()
-    ih_12a._loadParams()
-    # for a in ih_12a.params:
+    path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
+    ih = CST_Model(path)
+    names = ih.getResultNames()
+    ih._loadParams()
+    # for a in ih.params:
     #     print(a)
-    # print(ih_12a.getParam("tuner_stem_angle"))
-    ih_12a.editParam("shell_length", 6689)
+    # print(ih.getParam("tuner_stem_angle"))
+    ih.editParam("shell_length", 6689)
 
 
 if __name__ == "__main__":
