@@ -6,16 +6,30 @@ from cst_model_reader_config import config
 
 
 class CST_Model:
-    '''Read and edit parameters of a cst file
-       only read simple results
+    '''Multiple tools to access a cst file.
 
-       methods: getResultNames, getResult, getParam, getParams, editParam'''
 
-    def __init__(self, filename, cst_path=None):
-        ''' initializes the path of the cst file
-            and adds some internal variables
+    Parameters
+    ----------
+    filename : str
+        Path to .cst file.
+    cst_path : str, optional
+        Path of cst.exe. If None, path of
+        cst_model_reader_config will be used.
+    autorecover : str
+        Refer to parfile.__handle_existing_backup
+        for further information.
 
-            returns None'''
+    Attributes
+    ----------
+    parfile0 : :obj:`parfile`
+        Refer to class parfile.
+    verbose : bool
+        Wether messages should be printed or not.
+
+    '''
+
+    def __init__(self, filename, cst_path=None, autorecover=None):
         self.verbose = True
 
         if not os.path.isfile(filename):
@@ -56,7 +70,12 @@ class CST_Model:
         return self.filename
 
     def message(self, *args):
-        '''prints a message if self.verbose set to True
+        '''Prints a message if self.verbose set to True.
+
+        Parameters
+        ----------
+        args : str(arg)-compatible
+            will be handed to print() method
         '''
         if self.verbose:
             msg = ""
@@ -66,6 +85,15 @@ class CST_Model:
             print(msg)
 
     def toggle_mute(self, silent=False):
+        '''Toggels verbose value between True and False
+
+        Parameters
+        ----------
+        silent : bool, optional
+            Wether mute, unmute state should be printed
+            when running this method.
+
+        '''
         self.verbose = not self.verbose
         if self.verbose:
             if not silent:
@@ -77,18 +105,38 @@ class CST_Model:
             raise Exception("self.verbose is not bool", self.verbose)
 
     def getResultNames(self, filetypes=[".rd0"]):
-        ''' should return a list of all results in result path
+        '''Should return a list of all results in result path.
 
-            filetypes:  list or str, which file-extension
-                        should be searched for
+        Note
+        ----
+        Results in sub-directories are not included yet.
 
-            returns all files in cst files ResultPath specified in __init__'''
+        Parameters
+        ----------
+        filetypes :  list or str
+            Which file-extension should be searched for.
+
+        Returns
+        ------
+        list
+            All files in cst files ResultPath specified in __init__'''
         filepaths = f.get_files(self.ResultPath, filetypes)
         # removing long path to display only the names of the files
         return [filename.split("/")[-1] for filename in filepaths]
 
     def getResult(self, Resultname, filetype=".rd0"):
-        '''returns float of Result value from rd0-file'''
+        '''
+        Parameters
+        ----------
+        Resultname : str
+            Name of Result, must be located in self.ResultPath
+        filetype : str, optional
+            Currently only .rd0 files are implemented
+
+        Returns
+        -------
+        float
+            float of first line in corresponding rd0-file'''
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
         if Resultname[-4] != filetype:
@@ -99,9 +147,15 @@ class CST_Model:
         return float(file.readline())
 
     def getParams(self):
-        '''returns all available parameter triplets as a list
+        '''Loads and returns all parametes
 
-            as [parName, parEquation, parValue]
+        Returns all available parameter triplets as a list
+        in form [[parName, parEquation, parValue],]
+
+        Returns
+        -------
+        list
+            list of the above mentioned triplets
         '''
         try:
             self.params
@@ -110,12 +164,15 @@ class CST_Model:
         return self.params
 
     def _loadParams(self):
-        '''should read all cst file parameters and insert
-           it in internal list self.params'''
+        '''Loads and evaluates all parameters in parfile
+
+        Should read all cst file parameters and insert
+        it in internal list self.params'''
 
         def clean(param_raw):
-            ''' returns a list of all params neglegting parameters whichs
-                value is -1'''
+            '''returns a list of all params neglegting parameters whichs
+               value is -1
+            '''
 
             # parameter in cst cant be named using a whitespace
             # therefore all spaces will be deleted
@@ -126,7 +183,8 @@ class CST_Model:
             return params
 
         def evaluate(equation_raw):
-            ''' should replace parameter-names by its value or function '''
+            '''should replace parameter-names by its value or function
+            '''
             equation = "".join(equation_raw)
             while True:
                 for par in self.params:
@@ -152,7 +210,8 @@ class CST_Model:
                     equation = equation[:-1]
 
         def evaluate2(equation):
-            ''' should replace parameter-names only by its value'''
+            '''should replace parameter-names only by its value
+            '''
             for param in self.params:
                 if param[0] in str(equation):
                     try:
@@ -195,22 +254,51 @@ class CST_Model:
         # self.params = params
 
     def getParam(self, Paramname):
-        ''' parname: string, the parameter which should be returned
+        '''Returns name, formula and computed value of Parameter
 
-            returns list, [0]: name, [1]: formula, [2] value'''
+        Parameters
+        ----------
+        parname : string
+            The parameter whichs triplet should be returned.
+
+        Returns
+        -------
+        list
+            list[0]: name, list[1]: formula, list[2] value
+        '''
         self.getParams()
         names = [a[0] for a in self.params]
         return self.params[names.index(Paramname.lower())]
 
     def editParam(self, Paramname, value, method="scary"):
-        '''edits the parameter value in the cst parameter file
-           This Script was created for CST 2017
+        '''Edits the parameter value.
 
-            parname: string, parametername which should be edited
+        Edits the parameter value in the cst parameter file
+        This Script was created for CST 2017
 
-            value: int or float, value which should be assigned to parameter
+        Note
+        ----
+        Call cst_rebuild after editing all parameters
+        to update the geometry.
 
-            returns None'''
+        Parameters
+        ----------
+        parname : string
+            Parametername which should be edited.
+        value : int or float
+            Value which should be assigned to parameter
+        method : str
+            Use "scary" or "slow".
+
+            "scary" will edit entries in the .par-file
+            which is not recommended by cst staff
+
+            "slow" will call a cst routine,
+            but for more parameters its really slow.
+            You may use cst_import_parfile-method
+            and write your own .par file
+
+        '''
 
         def scary(self, Paramname, value):
             # the parameter file is a 771 chars long file ?
@@ -268,13 +356,21 @@ class CST_Model:
             scary(self, Paramname, value)
 
     def _run(self, flags, dc=None):
-        ''' Use flags as specified in
-            cst manual chapter "command line options"
+        '''Run cst command for this file.
 
-            flags: str
+        Note
+        ----
+        Use flags as specified in
+        CST manual chapter "command line options"
 
-            dc: str, distributed comuting as "maincontroller:port"
-                     like "142.2.245.136:360000"
+        Parameters
+        ----------
+        flags : str
+            Refer to CST manual
+
+        dc : str
+            distributed comuting as "maincontroller:port"
+            like "112.2.245.136:360000"
         '''
         if dc:
             flags += "-withdc=" + str(dc) + " "
@@ -286,11 +382,13 @@ class CST_Model:
             print(self.__str__(), "returncode", returncode)
 
     def cst_rebuild(self):
-        ''' CST History will be updated completely
+        '''CST History will be updated completely
 
-            flags = " -m -rebuild"
+        Note
+        ----
+        flags = " -m -rebuild"
 
-            returns None
+
         '''
         flags = " -m -rebuild "
         self.message(str(self), "rebuilding")
@@ -301,13 +399,18 @@ class CST_Model:
         # subprocess.call(cmd)
 
     def cst_run_eigenmode(self, dc=None):
-        ''' runs eigenmode solver for the model
+        '''Runs eigenmode solver for the model.
 
-            flags = " -m -e "
-            dc: str, distributed comuting as "maincontroller:port" like
-                     "142.2.245.136:360000"
+        Note
+        ----
+        flags = " -m -e "
 
-            returns None
+        Parameters
+        ----------
+        dc : str
+            distributed comuting as "maincontroller:port" like
+            "142.2.245.136:360000"
+
         '''
         flags = " -m -e "
         self.message(str(self), "running Eigenmode Solver")
@@ -318,13 +421,18 @@ class CST_Model:
         # subprocess.call(cmd)
 
     def cst_run_optimizer(self, dc=None):
-        ''' runs microwave studio optimizer for the model
+        '''Runs microwave studio optimizer for the model.
 
-            flags = " -m -o "
-            dc: str, distributed comuting as "maincontroller:port" like
-                     "142.2.245.136:360000"
+        Note
+        ----
+        flags = " -m -o "
 
-            returns None
+        Parameters
+        ----------
+        dc : str
+            distributed comuting as "maincontroller:port" like
+            "142.2.245.136:360000"
+
         '''
         flags = " -m -o "
         self.message(str(self), "running Eigenmode optimizer")
@@ -335,11 +443,19 @@ class CST_Model:
         # subprocess.call(cmd)
 
     def cst_import_parfile(self, parfilepath):
-        ''' runs microwave studio optimizer for the model
+        '''Runs CST routine for importing .par file.
 
-            flags = " -c -par " + parfilepath + " "
+        Note
+        ----
+        flags = " -c -par " + parfilepath + " "
 
-            returns None
+        Parameters
+        ----------
+        parfilepath: str
+            Path to file which should be imported
+            ending on ".par"
+
+
         '''
         assert os.path.isfile(parfilepath)
         flags = " -c -par " + parfilepath + " "
@@ -353,22 +469,34 @@ class CST_Model:
         pass
 
     def sweep(self, Paramname, values, dc=None, flags=None):
-        ''' Will perform a Eigenmode Sweep on the given values.
-            Seperate Instances of CST will be called
-            in order to perfom.
+        '''Performs a Eigenmode Sweep on the given values.
 
-            The Sweep will be performed, after completion
-            the value will be set to the initial
-            value before sweeping.
+        Will perform a Eigenmode Sweep on the given values.
+        Seperate Instances of CST will be called
+        in order to perfom.
 
-            Paramname: str, the selected parameter to sweep
+        Note
+        ----
+        Parameters before and after sweep will
+        be the same.
 
-            values: iterable(float or int), the values to sweep over
+        If flags are given, its not a eigenmode sweep,
+        but a sweep with the selcted flag.
 
-            dc: str, distributed comuting as "maincontroller:port" like
-                     "142.2.245.136:360000"
+        Parameters
+        ----------
+        Paramname : str
+            The selected parameter to sweep.
 
-            flags: refer to module _run()
+        values : iterable(float or int)
+            The values to sweep over.
+
+        dc : str
+            Distributed comuting as "maincontroller:port" like
+            "142.2.245.136:360000".
+
+        flags : str
+            Refer to module _run().
         '''
 
         def check_args():
@@ -399,19 +527,17 @@ class CST_Model:
 class parfile:
     '''Class to handle parfile
 
-        path: str, path to "Model.par"
+    Parameters
+    ----------
+    path : str
+        Path to "Model.par".
+    master_cav : :obj:`CST_Model`
+        Model corresponding to parfile.
 
-        master_cav: CST_Model, model corresponding to parfile
-
-       Attributes:
-
-        path: str, Path to Model.par
-
-       Routines:
-
-        backup()
-        recover()
-
+    Attributes
+    ----------
+    path : str
+        Path to Model.par
 
     '''
 
@@ -434,9 +560,12 @@ class parfile:
         shutil.copyfile(self.path, self._path_backup)
 
     def recover(self):
-        '''Replaces content of /3D/Model/Model.par
-           by content of Model.parbackup
-           and rebuilds correspinding cst file.
+        '''Recovers parameters from backup.
+
+        Replaces content of /3D/Model/Model.par
+        by content of Model.parbackup
+        and rebuilds correspinding cst file.
+
         '''
         assert os.path.isfile(self._path_backup)
         os.remove(self.path)
@@ -444,8 +573,20 @@ class parfile:
         self._master_cav.cst_rebuild()
 
     def __handle_existing_backup(self, autoanswer=None):
-        '''Deals with a existing parfile backup
-           by asking to recover
+        '''Handles previously created parameter-backups.
+
+        Deals with a existing parfile backup
+        by asking to recover it
+
+        Notes
+        -----
+        The backupfile will be DELETED
+
+        Parameters
+        ----------
+        autoanswer : str
+            Modul not final yet
+
         '''
         if os.path.isfile(self._path_backup):
             self._master_cav.message("A parfile backup has been detected")
