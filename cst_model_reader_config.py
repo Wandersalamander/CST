@@ -14,7 +14,9 @@ class config:
         for version in config.__cst_paths.keys():
             path = config.__cst_paths["version"]
             assert os.path.isfile(path)
-        config.cst_path = config.__cst_paths["2017"]
+        version = "2018"
+        print("Using CST", version)
+        config.cst_path = config.__cst_paths[version]
 
     def set_version(year):
         '''sets the environment path to the specified cst-version by year
@@ -24,5 +26,5 @@ class config:
             config.cst_path = config.__cst_paths[str(year)]
         else:
             raise Exception(
-                "No Path for this year specified, go specify it yourself"
+                "No Path for selected year specified, go specify it yourself"
             )
