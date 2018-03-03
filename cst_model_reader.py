@@ -44,7 +44,10 @@ class CST_Model:
         if cst_path:
             self.cst_path = cst_path
         else:
-            self.cst_path = config.cst_path
+            try:
+                self.cst_path = config.cst_path
+            except AttributeError:
+                config.__init__()
 
     def __str__(self):
         return self.name.split(".")[0]

@@ -12,7 +12,7 @@ class config:
 
     def __init__():
         for version in config.__cst_paths.keys():
-            path = config.__cst_paths["version"]
+            path = config.__cst_paths[version]
             assert os.path.isfile(path)
         version = "2018"
         print("Using CST", version)
