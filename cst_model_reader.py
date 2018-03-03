@@ -16,7 +16,10 @@ class CST_Model:
     cst_path : str, optional
         Path of cst.exe. If None, path of
         cst_model_reader_config will be used.
-    autorecover : str
+    autoanswer : str, optional
+        None, "Y" or "n"
+        How to answer input-functions.
+        Refer to parfile-class.
         Refer to parfile.__handle_existing_backup
         for further information.
 
@@ -29,7 +32,7 @@ class CST_Model:
 
     '''
 
-    def __init__(self, filename, cst_path=None, autorecover=None):
+    def __init__(self, filename, cst_path=None, autoanswer=None):
         self.verbose = True
 
         if not os.path.isfile(filename):
@@ -51,7 +54,8 @@ class CST_Model:
         self.parfile0 = parfile(
             path="".join(self.filename.split(".")[:-1]) +
             "/Model/3D/Model.par",
-            master_cav=self
+            master_cav=self,
+            autoanswer=autoanswer
         )
         if cst_path:
             self.cst_path = cst_path
@@ -533,6 +537,9 @@ class parfile:
         Path to "Model.par".
     master_cav : :obj:`CST_Model`
         Model corresponding to parfile.
+    autoanswer : str, optional
+        None, "Y" or "n"
+        How to answer question asked by input-funtion
 
     Attributes
     ----------
@@ -541,7 +548,8 @@ class parfile:
 
     '''
 
-    def __init__(self, path, master_cav):
+    def __init__(self, path, master_cav, autoanswer=None):
+        self.autoanswer = autoanswer
         self._filetype = ".par"
         self._filetype_backup = ".parbackup"
         assert path[-len(self._filetype):] == self._filetype
@@ -572,7 +580,7 @@ class parfile:
         os.rename(self._path_backup, self.path)
         self._master_cav.cst_rebuild()
 
-    def __handle_existing_backup(self, autoanswer=None):
+    def __handle_existing_backup(self):
         '''Handles previously created parameter-backups.
 
         Deals with a existing parfile backup
@@ -580,18 +588,15 @@ class parfile:
 
         Notes
         -----
-        The backupfile will be DELETED
-
-        Parameters
-        ----------
-        autoanswer : str
-            Modul not final yet
+        The backup-file will be DELETED
+        either neglecting the parameters
+        or applying them to the cst-file.
 
         '''
         if os.path.isfile(self._path_backup):
             self._master_cav.message("A parfile backup has been detected")
-            if autoanswer:
-                answer = autoanswer
+            if self.autoanswer:
+                answer = self.autoanswer
             else:
                 answer = input("[Y/n] Recover parameters from parfile?")
             if answer == "Y" or "y":
