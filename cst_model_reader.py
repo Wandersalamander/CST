@@ -164,7 +164,6 @@ class CST_Model:
             self._loadParams()
         return self.params
 
-
     def _loadParams(self):
         '''Loads and evaluates all parameters in parfile
 
@@ -173,49 +172,55 @@ class CST_Model:
 
         '''
         def compute(params):
-            _params = copy.deepcopy(params)
-            # while True:
+            '''compute the value of all equations
+            '''
+
             def evaluate():
+                '''try to evaluate all equations
+
+                Note
+                ----
+                _params and params will be edited
+                '''
                 for idx, p in enumerate(_params):
-                    name, equation = p[0], p[1]
-                    equation.replace("^","**")
+                    equation = p[1]
+                    equation.replace("^", "**")
                     try:
-                        # print(name)
                         if len(p) != 3:
+                            # for working
                             p.append(eval(equation))
                         if len(params[idx]) != 3:
+                            # for output
                             params[idx].append(eval(equation))
                     except NameError:
                         pass
+
+            # working copy
+            # to apply .lower() without changing it in params
+            _params = copy.deepcopy(params)
             evaluate()
             while True:
-            # for i in range(20):
                 evaluated = [p for p in _params if len(p) == 3]
                 for e in evaluated:
                     name, val = e[0].lower(), e[2]
                     for i, p in enumerate(_params):
                         equation = p[1].lower()
                         if name in equation:
-                            # print(name,equation)
                             idx = equation.index(name) + len(name)
                             if idx == len(equation):
-                                # print(equation, name)
-                                print(name)
-                                print(equation)
-                                print(" "*equation.index(name) + name +"="+str(val))
-                                _params[i][1] = equation.replace(name, str(val))
-                                print(_params[i][1])
-                                print()
+                                _params[i][1] = \
+                                    equation.replace(name, str(val))
                             else:
-                                if equation[idx] in ["+", "-", "*", "/", "^", ")"]:
-                                    print(name)
-                                    print(equation)
-                                    print(" "*equation.index(name) + name+"="+str(val))
-                                    _params[i][1] = equation.replace(name, str(val))
-                                    print(_params[i][1])
-                                    print()
+                                # mathematical symbols after name so that
+                                # following example cant happen
+                                # "ih" : 1,"ih_1" :9
+                                # "ih_1".replace(..)
+                                # "9_1"
+                                if equation[idx] in\
+                                   ["+", "-", "*", "/", "^", ")"]:
+                                    _params[i][1] = \
+                                        equation.replace(name, str(val))
                 evaluate()
-                # print(len(evaluated))
                 if len(evaluated) == len(_params):
                     return params
 
@@ -224,7 +229,7 @@ class CST_Model:
         # formatting
         params = [x for x in file.readlines()]
         params = [x.split("  ") for x in params]
-        params = [[a for a in x if a not in [""]]for x in params]
+        params = [[a for a in x if a not in [""]] for x in params]
         params = [[a.replace(" ", "") for a in x] for x in params]
         params = [x for x in params if x[-1] != "-1\n"]
         # assumption:
@@ -237,14 +242,6 @@ class CST_Model:
         params = [x[:2] for x in params]
         params = sorted(params, key=lambda x: -len(x[0]))
         params = compute(params)
-        # while True:
-        # for i in range(1):
-        #     for i, p in enumerate(params):
-        #         try:
-        #             params[i].append(eval(p[1]))
-        #         except NameError:
-        #             pass
-            # return
         self.params = params
 
     def getParam(self, Paramname):
@@ -350,18 +347,15 @@ class CST_Model:
             for l in lines:
                 paramFile.write(l)
 
-        def slow(self, Paramname, value):
+        def slow(self, Paramname, value,):
             filename = self.FilePath + "par_tmp.par"
             file = open(filename, "w")
             file.write(Paramname + "\t\t\t" + str(value))
             file.close()
-            # flag = " -c -par " + filename + " "
-            # cmd = self.cst_path + flag + self.filename
-            # print(cmd)
             assert os.path.isfile(self.filename)
-            # subprocess.call(cmd)
             self.cst_import_parfile(filename)
             os.remove(filename)
+
         methods = ["slow", "scary"]
         assert method in methods
         assert self.isParam(Paramname)
