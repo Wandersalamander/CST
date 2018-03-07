@@ -25,7 +25,7 @@ class CST_Model:
 
     Attributes
     ----------
-    parfile0 : :obj:`parfile`
+    parhandler : :obj:`parfile`
         Refer to class parfile.
     verbose : bool
         Wether messages should be printed or not.
@@ -60,7 +60,7 @@ class CST_Model:
                 config.__init__()
                 self.cst_path = config.cst_path
 
-        self.parfile0 = parfile(
+        self.parhandler = parfile(
             path="".join(self.filename.split(".")[:-1]) +
             "/Model/3D/Model.par",
             master_cav=self,
@@ -225,7 +225,7 @@ class CST_Model:
                     return params
 
         self.message(str(self), "loading Parameters")
-        file = open(self.parfile0.path, mode='r')
+        file = open(self.parhandler.path, mode='r')
         # formatting
         params = [x for x in file.readlines()]
         params = [x.split("  ") for x in params]
@@ -317,10 +317,10 @@ class CST_Model:
             # all chars where i < 256 belong to the parameter name ?
             # all chars where  255 < i < 513 belong to the equation ?
             # all chars where i < 512 belong to comment ?
-            paramFile = open(self.parfile0.path, "r")
+            paramFile = open(self.parhandler.path, "r")
             #  asserting its the pure paramname
             Paramname = " " + Paramname + " "
-            assert self.parfile0.path[-4:] == ".par"
+            assert self.parhandler.path[-4:] == ".par"
             lines = paramFile.readlines()
             count = 0  # we only want to find one line
             name_end_idx = 255
@@ -343,7 +343,7 @@ class CST_Model:
             lines[index] = newline
             assert len(newline) == 771
             paramFile.close()
-            paramFile = open(self.parfile0.path, "w")
+            paramFile = open(self.parhandler.path, "w")
             for l in lines:
                 paramFile.write(l)
 
@@ -567,7 +567,7 @@ class CST_Model:
         check_args()
         self.message(str(self), "sweeping", Paramname)
         # value_init = self.getParam(Paramname)[1]
-        self.parfile0.backup()
+        self.parhandler.backup()
         # self.message("\tInitial value", value_init)
         for run, value in enumerate(values):
             self.message("\nRun", run, "/", len(value))
@@ -579,7 +579,7 @@ class CST_Model:
                 self.cst_run_eigenmode(dc)
         # resetting to initial value
         self.message(str(self), "resetting to initial value")
-        self.parfile0.recover()
+        self.parhandler.recover()
         # self.editParam(Paramname, value_init)
         # self.cst_rebuild()
 
