@@ -1,6 +1,6 @@
 import functions as f
 import os
-import shutil
+import shutil, copy
 import subprocess
 from cst_model_reader_config import config
 
@@ -164,95 +164,88 @@ class CST_Model:
             self._loadParams()
         return self.params
 
+
     def _loadParams(self):
         '''Loads and evaluates all parameters in parfile
 
         Should read all cst file parameters and insert
-        it in internal list self.params'''
+        it in internal list self.params
 
-        def clean(param_raw):
-            '''returns a list of all params neglegting parameters whichs
-               value is -1
-            '''
-
-            # parameter in cst cant be named using a whitespace
-            # therefore all spaces will be deleted
-            params = param_raw.split("  ")
-            params = [param.replace(" ", "") for param in params if param !=
-                      "" and param != "\n"]
-            params = [param.lower() for param in params]
-            return params
-
-        def evaluate(equation_raw):
-            '''should replace parameter-names by its value or function
-            '''
-            equation = "".join(equation_raw)
-            while True:
-                for par in self.params:
-                    par_name = par[0]
-                #     print(equation)
-                    if par_name in equation:
-                        # print(par_name, equation,self.getParam(par_name)[1])
-                        try:
-                            if equation[
-                                equation.index(par_name) + len(par_name)
-                            ] in ["+", "-", "*", "/", "^", ")"]:
-                                equation = equation.replace(
-                                    par_name,
-                                    "(" + self.getParam(par_name)[1] + ")"
-                                )
-                        except IndexError:
-                            pass
-                try:
-                    return eval(equation)
-                except NameError:
-                    return equation
-                except SyntaxError:
-                    equation = equation[:-1]
-
-        def evaluate2(equation):
-            '''should replace parameter-names only by its value
-            '''
-            for param in self.params:
-                if param[0] in str(equation):
+        '''
+        def compute(params):
+            _params = copy.deepcopy(params)
+            # while True:
+            def evaluate():
+                for idx, p in enumerate(_params):
+                    name, equation = p[0], p[1]
+                    equation.replace("^","**")
                     try:
-                        if equation[equation.index(param[0]) + len(param[0])] in ["+", "-", "*", "/", "^", ")"]:
-                            equation = equation.replace(
-                                param[0], "(" + str(param[2]) + ")")
-                    except IndexError:
-                        equation = equation.replace(
-                            param[0], "(" + str(param[2]) + ")")
-            try:
-                return eval(str(equation).replace("^", "**"))
-            except NameError:
-                return equation
+                        # print(name)
+                        if len(p) != 3:
+                            p.append(eval(equation))
+                        if len(params[idx]) != 3:
+                            params[idx].append(eval(equation))
+                    except NameError:
+                        pass
+            evaluate()
+            while True:
+            # for i in range(20):
+                evaluated = [p for p in _params if len(p) == 3]
+                for e in evaluated:
+                    name, val = e[0].lower(), e[2]
+                    for i, p in enumerate(_params):
+                        equation = p[1].lower()
+                        if name in equation:
+                            # print(name,equation)
+                            idx = equation.index(name) + len(name)
+                            if idx == len(equation):
+                                # print(equation, name)
+                                print(name)
+                                print(equation)
+                                print(" "*equation.index(name) + name +"="+str(val))
+                                _params[i][1] = equation.replace(name, str(val))
+                                print(_params[i][1])
+                                print()
+                            else:
+                                if equation[idx] in ["+", "-", "*", "/", "^", ")"]:
+                                    print(name)
+                                    print(equation)
+                                    print(" "*equation.index(name) + name+"="+str(val))
+                                    _params[i][1] = equation.replace(name, str(val))
+                                    print(_params[i][1])
+                                    print()
+                evaluate()
+                # print(len(evaluated))
+                if len(evaluated) == len(_params):
+                    return params
 
         self.message(str(self), "loading Parameters")
         file = open(self.parfile0.path, mode='r')
-        params = [clean(param_raw) for param_raw in file.readlines()]
-        params = [param for param in params if param[1] != "-1\n"]
+        # formatting
+        params = [x for x in file.readlines()]
+        params = [x.split("  ") for x in params]
+        params = [[a for a in x if a not in [""]]for x in params]
+        params = [[a.replace(" ", "") for a in x] for x in params]
+        params = [x for x in params if x[-1] != "-1\n"]
+        # assumption:
+        # [0]: name, [1]: equation, [2]: comment
+        # asserting assumtion
+        for p in params:
+            if len(p) > 3:
+                raise Exception("Bug occured, pleas fix here")
+        # neglection comment
+        params = [x[:2] for x in params]
         params = sorted(params, key=lambda x: -len(x[0]))
-        # selction only param_name and its value
+        params = compute(params)
+        # while True:
+        # for i in range(1):
+        #     for i, p in enumerate(params):
+        #         try:
+        #             params[i].append(eval(p[1]))
+        #         except NameError:
+        #             pass
+            # return
         self.params = params
-        params = [param[0:2] + [evaluate(param[1])] for param in params]
-        self.params = params
-        # selction only param_name and its value
-        while True:
-            try:
-                # abort when sum can be computed
-                # abort when all p[2] are evaluated
-                # print([p[2] for p in self.params])
-                # print()
-                sum([p[2] for p in self.params])
-                break
-            except:
-                params = [param[0:2] + [evaluate2(param[2])]
-                          for param in params]
-                self.params = params
-
-        file.close()
-        # params = [param[0:2] + [evaluate2(param[2])] for param in params]
-        # self.params = params
 
     def getParam(self, Paramname):
         '''Returns name, formula and computed value of Parameter
@@ -268,7 +261,7 @@ class CST_Model:
             list[0]: name, list[1]: formula, list[2] value
         '''
         self.getParams()
-        names = [a[0] for a in self.params]
+        names = [a[0].lower() for a in self.params]
         return self.params[names.index(Paramname.lower())]
 
     def isParam(self, Paramname):
@@ -678,16 +671,15 @@ class parfile:
 
 def TEST():
     path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
-    ih = CST_Model(path)
+    ih = CST_Model(path,autoanswer="A")
     names = ih.getResultNames()
     ih._loadParams()
     assert ih.isParam("lackschmack") is False
     assert ih.isParam("Mesh_model") is True
-    # for a in ih.params:
-    #     print(a)
+    for a in ih.params:
+        print(a)
     # print(ih.getParam("tuner_stem_angle"))
     ih.editParam("shell_length", 6689)
-
 
 if __name__ == "__main__":
     TEST()
