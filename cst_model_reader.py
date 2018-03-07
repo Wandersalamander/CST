@@ -37,7 +37,7 @@ class CST_Model:
 
         if not os.path.isfile(filename):
             raise FileNotFoundError(
-                filename + "not found"
+                filename + " not found"
             )
         if " " in filename:
             raise Warning(
@@ -51,12 +51,6 @@ class CST_Model:
         self.ResultPath = "".join(self.ResultPath) + "/Result/"
         # self.ParamPath = "".join(self.filename.split(
         #     ".")[:-1]) + "/Model/3D/" + "Model.par"
-        self.parfile0 = parfile(
-            path="".join(self.filename.split(".")[:-1]) +
-            "/Model/3D/Model.par",
-            master_cav=self,
-            autoanswer=autoanswer
-        )
         if cst_path:
             self.cst_path = cst_path
         else:
@@ -66,6 +60,13 @@ class CST_Model:
                 config.__init__()
                 self.cst_path = config.cst_path
 
+        self.parfile0 = parfile(
+            path="".join(self.filename.split(".")[:-1]) +
+            "/Model/3D/Model.par",
+            master_cav=self,
+            autoanswer=autoanswer
+        )
+
     def __str__(self):
         return self.filename.split(
             "/")[-1].split(".")[0]
@@ -73,20 +74,16 @@ class CST_Model:
     def __repr__(self):
         return self.filename
 
-    def message(self, *args):
+    def message(self, *args, **kwargs):
         '''Prints a message if self.verbose set to True.
 
         Parameters
         ----------
         args : str(arg)-compatible
-            will be handed to print() method
+            will be passed to print(*args) method
         '''
         if self.verbose:
-            msg = ""
-            for arg in args:
-                msg += str(arg) + " "
-            msg.strip()
-            print(msg)
+            print(*args, **kwargs)
 
     def toggle_mute(self, silent=False):
         '''Toggels verbose value between True and False
@@ -294,6 +291,7 @@ class CST_Model:
             return True
         except ValueError:
             return False
+
     def editParam(self, Paramname, value, method="scary"):
         '''Edits the parameter value.
 
@@ -380,7 +378,7 @@ class CST_Model:
         elif method == "scary":
             scary(self, Paramname, value)
 
-    def _run(self, flags, dc=None):
+    def _run(self, flags, dc=None, timeout=None):
         '''Run cst command for this file.
 
         Note
@@ -392,36 +390,67 @@ class CST_Model:
         ----------
         flags : str
             Refer to CST manual
-
-        dc : str
+        dc : str, optional
             distributed comuting as "maincontroller:port"
             like "112.2.245.136:360000"
+        timeout : int or float, optional
+            time in seconds till the command is terminated
+
+        Returns
+        -------
+        int
+            returncode
+
         '''
         if dc:
             flags += "-withdc=" + str(dc) + " "
         cmd = self.cst_path + flags + self.filename
         self.message(str(self), "running command:\n\t", cmd)
 
-        returncode = subprocess.call(cmd)
-        if returncode != 0:
-            print(self.__str__(), "returncode", returncode)
+        # returncode = subprocess.call(cmd)
+        p = subprocess.Popen(cmd)
+        try:
+            p.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise TimeoutError(
+                cmd + "\nCommand reached timeout of %d seconds" % timeout)
+        # except KeyboardInterrupt:
+        #     # try:
+        #     p.terminate()
+        #     # except OSError:
+        #     #    pass
+        # p.wait()
+        if p.returncode != 0:
+            print(self.__str__(),)
+            print("\tCommand", cmd)
+            print("\treturncode", p.returncode)
+        return p.returncode
 
-    def cst_rebuild(self):
+    def cst_rebuild(self, timeout=5 * 60):
         '''CST History will be updated completely
 
         Note
         ----
         flags = " -m -rebuild"
 
+        Parameters
+        ----------
+        timeout : int or float, optional
+            time in seconds till the command is terminated
+
+        Returns
+        -------
+        int
+            returncode
 
         '''
         flags = " -m -rebuild "
+
         self.message(str(self), "rebuilding")
         self.toggle_mute(silent=True)
-        self._run(flags)
+        returncode = self._run(flags=flags, timeout=timeout)
         self.toggle_mute(silent=True)
-        # cmd = self.cst_path + flags + self.filename
-        # subprocess.call(cmd)
+        return returncode
 
     def cst_run_eigenmode(self, dc=None):
         '''Runs eigenmode solver for the model.
@@ -436,12 +465,18 @@ class CST_Model:
             distributed comuting as "maincontroller:port" like
             "142.2.245.136:360000"
 
+        Returns
+        -------
+        int
+            returncode
+
         '''
         flags = " -m -e "
         self.message(str(self), "running Eigenmode Solver")
         self.toggle_mute(silent=True)
-        self._run(flags, dc=dc)
+        returncode = self._run(flags, dc=dc)
         self.toggle_mute(silent=True)
+        return returncode
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
@@ -458,16 +493,22 @@ class CST_Model:
             distributed comuting as "maincontroller:port" like
             "142.2.245.136:360000"
 
+        Returns
+        -------
+        int
+            returncode
+
         '''
         flags = " -m -o "
         self.message(str(self), "running Eigenmode optimizer")
         self.toggle_mute(silent=True)
-        self._run(flags, dc=dc)
+        returncode = self._run(flags, dc=dc)
         self.toggle_mute(silent=True)
+        return returncode
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
 
-    def cst_import_parfile(self, parfilepath):
+    def cst_import_parfile(self, parfilepath, timeout=600):
         '''Runs CST routine for importing .par file.
 
         Note
@@ -479,15 +520,22 @@ class CST_Model:
         parfilepath: str
             Path to file which should be imported
             ending on ".par"
+        timeout : int or float, optional
+            time in seconds till the command is terminated
 
+        Returns
+        -------
+        int
+            returncode
 
         '''
         assert os.path.isfile(parfilepath)
         flags = " -c -par " + parfilepath + " "
         self.message(str(self), "importing parameter from\n\t", parfilepath)
         self.toggle_mute(silent=True)
-        self._run(flags)
+        returncode = self._run(flags)
         self.toggle_mute(silent=True)
+        return returncode
 
     def export_csv(self):
         print("export not implemented yet")
@@ -620,8 +668,8 @@ class parfile:
                 answer = self.autoanswer
             else:
                 answer = input("[Y/n] Recover parameters from parfile?")
-            if answer == "Y" or "y":
-                self._master_cav.message("Recovering")
+            if answer in ["Y", "y"]:
+                self._master_cav.message("Recovering pramaters from parfile")
                 self.recover()
             else:
                 self._master_cav.message("Removing", self._path_backup)
