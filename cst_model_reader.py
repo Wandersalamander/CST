@@ -1,6 +1,7 @@
 import functions as f
 import os
-import shutil, copy
+import shutil
+import copy
 import subprocess
 from cst_model_reader_config import config
 
@@ -125,19 +126,33 @@ class CST_Model:
         # removing long path to display only the names of the files
         return [filename.split("/")[-1] for filename in filepaths]
 
-    def getResult(self, Resultname, filetype=".rd0"):
-        '''
+    def getResult(self, Resultname, filetype=".rd0", runID="0"):
+        '''Reads Result from Result folder
+
+        Note
+        ----
+        Currently only rundID 0 supported
+
+
         Parameters
         ----------
         Resultname : str
             Name of Result, must be located in self.ResultPath
         filetype : str, optional
             Currently only .rd0 files are implemented
+        runID : str, optional
+            get Result by runID
+            only runID 0 supported
+
 
         Returns
         -------
         float
-            float of first line in corresponding rd0-file'''
+            float of first line in corresponding rd0-file
+
+        '''
+        if runID != "0":
+            raise AttributeError("Only runID '0' allowed")
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
         if Resultname[-4] != filetype:
@@ -610,7 +625,8 @@ class parfile:
         self._filetype_backup = ".parbackup"
         assert path[-len(self._filetype):] == self._filetype
         assert isinstance(master_cav, CST_Model)
-        assert os.path.isfile(path)
+        if not os.path.isfile(path):
+            raise FileNotFoundError(str(path))
         self._master_cav = master_cav
         self.path = path
         self._path_backup = \
@@ -665,7 +681,7 @@ class parfile:
 
 def TEST():
     path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
-    ih = CST_Model(path,autoanswer="A")
+    ih = CST_Model(path, autoanswer="A")
     names = ih.getResultNames()
     ih._loadParams()
     assert ih.isParam("lackschmack") is False
@@ -674,6 +690,7 @@ def TEST():
         print(a)
     # print(ih.getParam("tuner_stem_angle"))
     ih.editParam("shell_length", 6689)
+
 
 if __name__ == "__main__":
     TEST()

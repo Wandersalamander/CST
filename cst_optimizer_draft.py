@@ -10,48 +10,52 @@ import cst_model_reader as cmr
 import copy
 
 
-class plotting():
-    def __init__(self, param_labels):
-        '''Starts interactive plotting
+# class plotting():
+#     def __init__(self, param_labels):
+#         '''Starts interactive plotting
 
 
-        Parameters
-        ----------
-        param_labels : list
-            y_labels to be plotted in subfigures
-            (use draw method to plot to this labels)
-            '''
-        plt.figure(0)
-        plt.ion()
-        self.x = 0
-        self.labels = ["cost"] + param_labels
-        self.splt = len(self.labels) * 100 + 11
-        for i, l in enumerate(self.labels):
-            plt.subplot(self.splt + i)
-            plt.ylabel(self.labels[i])
-        plt.pause(0.1)
-        plt.draw()
-        plt.show()
+#         Parameters
+#         ----------
+#         param_labels : list
+#             y_labels to be plotted in subfigures
+#             (use draw method to plot to this labels)
+#             '''
+#         plt.figure(0)
+#         plt.ion()
+#         self.x = 0
+#         self.labels = ["cost"] + param_labels
+#         self.splt = len(self.labels) * 100 + 11
+#         for i, l in enumerate(self.labels):
+#             plt.subplot(self.splt + i)
+#             plt.ylabel(self.labels[i])
+#         plt.pause(0.1)
+#         plt.draw()
+#         plt.pause(0.1)
+#         plt.show()
 
-    def draw(self, cost, params):
-        '''Draws cost and params into subplots
+#     def draw(self, cost, params):
+#         '''Draws cost and params into subplots
 
 
-        Parameters
-        ----------
-        cost : float
-            cost function value to be plotted
-        params : list of floats
-            ordered as param_labels to be plotted
-        '''
-        plt.figure(0)
-        assert len(params + [cost]) == len(self.labels)
-        for i, y in enumerate([cost] + params):
-            plt.subplot(self.splt + i)
-            plt.plot(self.x, y, "o", c="C0")
-        plt.pause(0.1)
-        plt.draw()
-        self.x += 1
+#         Parameters
+#         ----------
+#         cost : float
+#             cost function value to be plotted
+#         params : list of floats
+#             ordered as param_labels to be plotted
+#         '''
+#         plt.figure(0)
+#         params_l = list(params)  # to handle numpy arrays
+#         params_l = [cost] + params_l
+#         assert len(params_l) == len(self.labels)
+#         for i, y in enumerate(params_l):
+#             plt.subplot(self.splt + i)
+#             plt.plot(self.x, y, "o", c="C0")
+#         plt.pause(0.1)
+#         plt.draw()
+#         plt.pause(0.1)
+#         self.x += 1
 
 
 class optimizer():
@@ -75,6 +79,7 @@ class optimizer():
         self.variables_set = False
         self.cst_model = cmr.CST_Model(path)
         self.dc = None  # distributet computing
+        self.plt_x = 0
 
     def set_variable(self, var):
         '''Selects CST-parameter as variable for optimization
@@ -136,7 +141,6 @@ class optimizer():
             weight=1.0,
         )
         self.goals_set = True
-        pass
 
     def start_minimizer(self, method="Newton-CG"):
         '''Starts minimizer
@@ -165,7 +169,7 @@ class optimizer():
             triple = self.cst_model.getParam(Paramname)
             x0.append(triple[2])
         # start minimization
-        self.view = plotting(self.variables)
+        # self.view = plotting(self.variables)
         if method == "Nelder-Mead":
             res = minimize(
                 fun=self.__cost,
@@ -175,13 +179,16 @@ class optimizer():
             )
         else:
             res = minimize(
-                fun=self.cost_jac,
+                fun=self.__cost,
                 x0=x0,
-                method=method,
-                jac=True,
-                options={'maxiter': 10},
+                # method=method,
+                options={
+                    'maxiter': 10,
+                    "disp": True,
+                },
             )
-        print(res.message)
+        print("optimization ended, message:")
+        print("\t", res.message)
         print()
         print("recalculating with best result")
         self.__cost(res.x)
@@ -226,15 +233,13 @@ class optimizer():
         '''
         jac = []
         cost = self.__cost(x)
-        self.view.draw(cost, x)
+        # self.view.draw(cost, x)
         for i, val in enumerate(x):
             x_delta = copy.deepcopy(x)
             x_delta[i] = x_delta[i] + delta
             cost_delta = self.__cost(x_delta)
-            derivate = -(cost_delta - cost) / delta
+            derivate = (cost_delta - cost) / delta
             jac.append(derivate)
-        print("parameter\t", x)
-        print("cost and jacobian", cost, np.array(jac))
         return cost, np.array(jac)
 
     def __cost(self, x):
@@ -259,10 +264,14 @@ class optimizer():
                 value = x[i]
                 self.cst_model.editParam(Paramname, value, method="scary")
             # rebuild, that the parameter changes take effect
-            self.cst_model.cst_rebuild()
+            returncode1 = self.cst_model.cst_rebuild()
             # run solver to generate results
-            self.cst_model.cst_run_eigenmode(dc=self.dc)
+            returncode2 = self.cst_model.cst_run_eigenmode(dc=self.dc)
             # reinitiallize to obtain current parameter and results
+            if int(returncode1) == 1 or int(returncode2) == 1:
+                print("retrying because returncode=1")
+                returncode1 = self.cst_model.cst_rebuild()
+                returncode2 = self.cst_model.cst_run_eigenmode(dc=self.dc)
 
         def cost(self):
             '''Computes cost with all Goals'''
@@ -295,8 +304,13 @@ class optimizer():
             time.sleep(10)  # maybe a bugfix?
             cost = cost(self)
         # print("cost \t", cost)
-        print("\truntime cost \t", (time.time() - t0) // 60, "min.")
-        print()
+        # print("\truntime cost \t", (time.time() - t0) // 60, "min.")
+        # print()
+        plt.subplot(211)
+        plt.plot(self.plt_x, cost, "o", c="C1")
+        plt.draw()
+        plt.pause(0.1)
+        self.plt_x += 1
         return cost
 
 
@@ -319,6 +333,11 @@ class goals():
 class tests():
 
     def opt_f0():
+        plt.figure(1)
+        plt.ion()
+        plt.draw()
+        plt.pause(0.1)
+        plt.show()
         path = "C:/Users/Simon/Desktop/Optimizer-test/optf0test.cst"
         opt = optimizer(path)
         opt.set_variable([
@@ -328,8 +347,9 @@ class tests():
 
         opt.set_goal(name="Frequency (Mode 1)", operator="=", target=108.408)
 
-        opt.set_solver_server("141.2.245.144", "36100")
+        # opt.set_solver_server("141.2.245.144", "36100")
         opt.start_minimizer()
+
 
 if __name__ == "__main__":
     tests.opt_f0()

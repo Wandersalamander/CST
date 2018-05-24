@@ -19,8 +19,8 @@ class config:
             like "2018"
 
         '''
-        for version in config.__cst_paths.keys():
-            path = config.__cst_paths[version]
+        for ver in config.__cst_paths.keys():
+            path = config.__cst_paths[ver]
             assert os.path.isfile(path)
         print("Using CST", str(version))
         config.cst_path = config.__cst_paths[str(version)]
