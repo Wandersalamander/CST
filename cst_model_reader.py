@@ -379,6 +379,7 @@ class CST_Model:
             slow(self, Paramname, value)
         elif method == "scary":
             scary(self, Paramname, value)
+        self._loadParams()
 
     def _run(self, flags, dc=None, timeout=None):
         '''Run cst command for this file.
