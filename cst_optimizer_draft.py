@@ -1,355 +1,391 @@
-import numpy as np
-from matplotlib import pyplot as plt
 import sys
-import scipy as sp
+from multiprocessing import Pool
+import os
 import time
+from matplotlib import pyplot as plt
+import argparse
 from scipy.optimize import minimize
-import sys
+from shutil import copyfile, copytree, rmtree
+import numpy as np
+# cst model reader path here
 sys.path.append("C:/Users/Simon/Documents/CST")
 import cst_model_reader as cmr
-import copy
+from cst_model_reader_config import config
+import json
 
 
-# class plotting():
-#     def __init__(self, param_labels):
-#         '''Starts interactive plotting
+# def persist_to_file(file_name):
+
+#     def decorator(original_func):
+
+#         try:
+#             cache = json.load(open(file_name, 'r'))
+#         except (IOError, ValueError):
+#             cache = {}
+
+#         def new_func(*args, **kwargs):
+#             key = args + tuple(sorted(kwargs.items()))
+#             if key not in cache:
+#                 cache[key] = original_func(*args, **kwargs)
+#                 json.dump(cache, open(file_name, 'w'))
+#             return cache[key]
+
+#         return new_func
+
+#     return decorator
 
 
-#         Parameters
-#         ----------
-#         param_labels : list
-#             y_labels to be plotted in subfigures
-#             (use draw method to plot to this labels)
-#             '''
-#         plt.figure(0)
-#         plt.ion()
-#         self.x = 0
-#         self.labels = ["cost"] + param_labels
-#         self.splt = len(self.labels) * 100 + 11
-#         for i, l in enumerate(self.labels):
-#             plt.subplot(self.splt + i)
-#             plt.ylabel(self.labels[i])
-#         plt.pause(0.1)
-#         plt.draw()
-#         plt.pause(0.1)
-#         plt.show()
+class monitor():
+    '''shall display changes in parameters and cost function'''
+    num = 0
 
-#     def draw(self, cost, params):
-#         '''Draws cost and params into subplots
+    def __init__(self, ylabels):
+        plt.figure(monitor.num)
+        monitor.num += 1
+        plt.ion()
+        plt.show()
+        self.x = 0
+        for i, ylabel in enumerate(ylabels):
+            plt.subplot(len(ylabels), 1, i + 1)
+            plt.ylabel(ylabel)
+            plt.xlabel("run")
+            plt.draw()
+            plt.pause(0.1)
 
-
-#         Parameters
-#         ----------
-#         cost : float
-#             cost function value to be plotted
-#         params : list of floats
-#             ordered as param_labels to be plotted
-#         '''
-#         plt.figure(0)
-#         params_l = list(params)  # to handle numpy arrays
-#         params_l = [cost] + params_l
-#         assert len(params_l) == len(self.labels)
-#         for i, y in enumerate(params_l):
-#             plt.subplot(self.splt + i)
-#             plt.plot(self.x, y, "o", c="C0")
-#         plt.pause(0.1)
-#         plt.draw()
-#         plt.pause(0.1)
-#         self.x += 1
+    def plot(self, ys):
+        for i, y in enumerate(ys):
+            plt.subplot(len(ys), 1, i + 1)
+            plt.semilogy(self.x, y, "o", c="C%d" % i)
+            plt.draw()
+            plt.pause(0.1)
+        self.x += 1
 
 
-class optimizer():
-    '''Interface to controll optimization of CST Model
+class opt1:
+    '''optimizes tuner and everything'''
 
+    def __init__(self, path: str):
+        self.xopt = None
+        self.fopt = np.inf
+        self.PARAMS = [
+            "sp_Shell_height",
+            "sp_Shell_width",
+            "sp_Tuner_Beam_dist_at0",
+            "sp_Tuner_x",
+            "sp_Tuner_y",
+            "sp_Undercut",
+        ]
+        self.monitor0 = monitor(["cost"] + self.PARAMS)
+        assert path[-4:] == ".cst"
+        self.files = [
+            path,
+            path.replace(".cst", "tnr-40.cst"),
+            path.replace(".cst", "tnr+40.cst"),
+        ]
+        _par = [
+            -40,
+            +40,
+        ]
+        for i, file in enumerate(self.files[1:]):
+            copyfile(path, file)
+            copytree(path[:-4], file[:-4])
+            m2 = cmr.CST_Model(file, autoanswer="n")
+            m2.editParam("sp_Tuner", _par[i])
+            del m2  # deletes python-object, not file
 
-    Parameters
-    ----------
-    path : str
-        path to cst model which is subject
-        to optimization
-    '''
+    def __del__(self):
+        for i, file in enumerate(self.files[1:]):
+            os.remove(file)
+            rmtree(file[:-4])
 
-    def __init__(self, path):
-        if path[-4:] != ".cst":
-            raise Exception("path does not end on .cst")
-        self.path = path.replace("\\", "/")
-        self.variables = []  # list of strings
-        self.goals = goals()
-        self.goals_set = False
-        self.variables_set = False
-        self.cst_model = cmr.CST_Model(path)
-        self.dc = None  # distributet computing
-        self.plt_x = 0
-
-    def set_variable(self, var):
-        '''Selects CST-parameter as variable for optimization
-
-
-        Note
-        ----
-        This method does not handle wether
-        a cst-parameter is existing or not
-
-        Parameters
-        ----------+
-        var : str or list of str
-            name of cst parameter
-
-        '''
-        if isinstance(var, str):
-            self.variables.append(var)
-        elif isinstance(var, list):
-            for itm in var:
-                assert isinstance(itm, str)
-                self.variables.append(itm)
-        else:
-            raise TypeError("var must be list or str")
-        self.variables_set = True
-
-    def set_goal(self, name, operator, target, weight=1.0):
-        '''Sets goal for optimization
-
-
-        To set targets like
-        f0 = 10Hz
-        U0 > 5kV
-
-
-        Note
-        ----
-        This method does not handle wether
-        a cst-result is existing or not
-
-
-        Parameters
-        ----------
-        name : str
-            Name of result, located at
-            filepath/results/name.rd0
-        operator : str
-            ">", "<" or "="
-        target : float
-            target to optimize goal
-        weight : float, optional
-            weight
-
-        '''
-        self.goals.add(
-            name=name,
-            operator=operator,
-            target=target,
-            weight=1.0,
-        )
-        self.goals_set = True
-
-    def start_minimizer(self, method="Newton-CG"):
-        '''Starts minimizer
-
-
-        Note
-        ----
-        Jacoby-matrix buggy
-
-
-        Parameters
-        ----------
-        method : str
-            scipy.optimize.minimize method.
-            Select 'Nelder-Mead'
-            or a method which uses jacobian
-
-        '''
-        if not self.goals_set:
-            raise Exception("use set_goal first")
-        if not self.variables_set:
-            raise Exception("use set_variable first")
-        # initialize x0 with the current parameters
-        x0 = []
-        for i, Paramname in enumerate(self.variables):
-            triple = self.cst_model.getParam(Paramname)
-            x0.append(triple[2])
-        # start minimization
-        # self.view = plotting(self.variables)
-        if method == "Nelder-Mead":
-            res = minimize(
-                fun=self.__cost,
-                x0=x0,
-                method=method,
-                options={'maxiter': 10},
-            )
-        else:
-            res = minimize(
-                fun=self.__cost,
-                x0=x0,
-                # method=method,
-                options={
-                    'maxiter': 10,
-                    "disp": True,
-                },
-            )
-        print("optimization ended, message:")
-        print("\t", res.message)
-        print()
-        print("recalculating with best result")
-        self.__cost(res.x)
-
-    def set_solver_server(self, ip, port):
-        '''Use this to activate distributed computing
-
-
-        Parameters
-        ----------
-        ip : str or int
-            ip of dc solver server
-        port : str or int
-            port of dc solver server
-
-        '''
-        self.dc = str(ip) + ":" + str(port)
-
-    def cost_jac(self, x, delta=1e-6):
-        '''Compute jacobi-matrix numerically
-
-        Note
-        ----
-        Currently not debugged
-
-
-        Parameters
-        ----------
-        x : input vector
-            from here deviation will be computed
-        delta : float,
-            difference to compute
-            jacoby matrix numerically
-
-        Returns
-        -------
-        float
-            this is the cost funtion
-        numpy array
-            the jacoby martix
-
-        '''
-        jac = []
-        cost = self.__cost(x)
-        # self.view.draw(cost, x)
-        for i, val in enumerate(x):
-            x_delta = copy.deepcopy(x)
-            x_delta[i] = x_delta[i] + delta
-            cost_delta = self.__cost(x_delta)
-            derivate = (cost_delta - cost) / delta
-            jac.append(derivate)
-        return cost, np.array(jac)
-
-    def __cost(self, x):
-        '''Returns cost function
-
-
-        Parameters
-        ----------
-        x: vector
-
-
-        Returns
-        -------
-        float
-            cost-value'''
-
-        def generate_results(self):
-            '''Generates results by runnung eigenmode solver'''
-            # x[i] corresponds to self.variables[i]
-            # here x variables are applied to the cst model
-            for i, Paramname in enumerate(self.variables):
-                value = x[i]
-                self.cst_model.editParam(Paramname, value, method="scary")
-            # rebuild, that the parameter changes take effect
-            returncode1 = self.cst_model.cst_rebuild()
-            # run solver to generate results
-            returncode2 = self.cst_model.cst_run_eigenmode(dc=self.dc)
-            # reinitiallize to obtain current parameter and results
-            if int(returncode1) == 1 or int(returncode2) == 1:
-                print("retrying because returncode=1")
-                returncode1 = self.cst_model.cst_rebuild()
-                returncode2 = self.cst_model.cst_run_eigenmode(dc=self.dc)
-
-        def cost(self):
-            '''Computes cost with all Goals'''
-            self.cst_model = cmr.CST_Model(self.path)
-            # computing the cost function
-            cost = 0
-            for goal in self.goals.get():
-                name = goal[0]
-                operator = goal[1]
-                target = goal[2]
-                weight = goal[3]
-                current_value = self.cst_model.getResult(name)
-                if operator == ">":
-                    if current_value < target:
-                        cost += weight * abs(current_value - target)
-                elif operator == "<":
-                    if current_value > target:
-                        cost += weight * abs(current_value - target)
-                elif operator == "=":
-                    cost += weight * abs(current_value - target)
-                else:
-                    pass
-            return cost
-
-        t0 = time.time()
-        generate_results(self)
+    def run(self):
+        '''starts minimizer'''
+        def gen_x0():
+            x0 = []
+            with cmr.CST_Model(self.files[0], autoanswer="n") as model:
+                for par in self.PARAMS:
+                    x0.append(model.getParam(par)[2])
+            return x0
+        x0 = gen_x0()
+        assert len(x0) == len(self.PARAMS)
         try:
-            cost = cost(self)
-        except FileNotFoundError:
-            time.sleep(10)  # maybe a bugfix?
-            cost = cost(self)
-        # print("cost \t", cost)
-        # print("\truntime cost \t", (time.time() - t0) // 60, "min.")
-        # print()
-        plt.subplot(211)
-        plt.plot(self.plt_x, cost, "o", c="C1")
-        plt.draw()
-        plt.pause(0.1)
-        self.plt_x += 1
+            res = minimize(self.cost, x0)
+            print(res.x)
+            print(self.xopt)
+            self.xopt = res.x
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
+        print("best parameters", self.xopt)
+        with cmr.CST_Model(self.files[0]) as model:
+            for i, par in enumerate(self.PARAMS):
+                model.editParam(par, self.xopt[i])
+
+    def cost(self, x: np.ndarray):
+        def value(file: str, pattern: str):
+            '''searches for result matching your pattern'''
+            result_tmp = []
+            ress = results[file]
+            for name, val in ress:
+                if pattern in name:
+                    result_tmp.append(val)
+            if len(result_tmp) != 1:
+                print(result_tmp, pattern)
+                raise Exception(
+                    "Pattern matches multible results\nPattern:%s\nAvailable Results:%s"
+                    % (pattern, ress))
+            return result_tmp[0]
+
+        def compute_cost(self):
+            costs = []
+
+            tunerhub = abs(value(self.files[1], "Frequency (Mode 1)") -
+                           value(self.files[2], "Frequency (Mode 1)"))
+            target = 1
+            weight = 1
+            costs.append(abs((tunerhub - target) * weight))
+
+            frequency0 = value(self.files[0], "Frequency (Mode 1)")
+            target = 108.408
+            weight = 100
+            costs.append(abs((frequency0 - target) * weight))
+
+            frequency01 = abs(value(self.files[0], "Frequency (Mode 1)") -
+                              value(self.files[0], "Frequency (Mode 2)"))
+            target = 5
+            weight = 10
+            if frequency01 < target:
+                costs.append(abs((frequency01 - target) * weight))
+            else:
+                costs.append(0)
+
+            U_deviation_mean = abs(value(self.files[0], "U_deviation_mean"))
+            target = 0
+            weight = 1
+            costs.append(abs((U_deviation_mean - target) * weight))
+
+            U_deviation_mean_max = max(
+                abs(value(self.files[0], "U_deviation_mean")),
+                abs(value(self.files[1], "U_deviation_mean")),
+                abs(value(self.files[2], "U_deviation_mean")),
+            )
+            target = 0.1
+            weight = 10
+            if U_deviation_mean_max > target:
+                costs.append(abs((U_deviation_mean_max - target) * weight))
+            else:
+                costs.append(0)
+
+            # "U_deviation Gap",
+            for i in range(12):
+                U_deviation_G = abs(
+                    value(self.files[0], "U_deviation Gap%d.rd0" % (i + 1)))
+                target = 0.05
+                weight = 1
+                if U_deviation_G > target:
+                    costs.append(abs((U_deviation_G - target) * weight))
+                else:
+                    costs.append(0)
+            # "delta_mean",
+            # for i in range(12):
+            #     delta_mean = abs(value(self.files[0], "delta_mean"))
+            #     target = 0.05
+            #     weight = 1
+            #     if delta_mean > target:
+            #         costs.abs(append((delta_mean - target) * weight))
+
+            # "Tuner_min_pos",
+            Tuner_min_pos = abs(value(self.files[0], "Tuner_min_pos"))
+            target = 80
+            weight = 1
+            if Tuner_min_pos > target:
+                costs.append(abs((Tuner_min_pos - target) * weight))
+            else:
+                costs.append(0)
+
+            # "Mode_Indicator",
+            Mode_Indicator = abs(value(self.files[0], "Mode_Indicator"))
+            target = 6
+            weight = 1
+            if Mode_Indicator < target:
+                costs.append(abs((Mode_Indicator - target) * weight))
+            else:
+                costs.append(0)
+
+            # "P_ges_plus10%_plus20%",
+            P_ges = abs(value(self.files[0], "P_ges_plus10%_plus20%"))
+            target = 6
+            weight = 1
+            if P_ges < target:
+                costs.append(abs((P_ges - target) * weight))
+            else:
+                costs.append(0)
+            self.monitor0.plot([np.sum(costs)] + list(x))
+            print("cost:", np.sum(costs), list(costs))
+            return np.sum(costs)
+
+        WANTEDRESULTS = [
+            "U_deviation_mean.rd0",
+            "Frequency (Mode 1)",
+            "Frequency (Mode 2)",
+            "U_deviation Gap",
+            "delta_mean.rd0",
+            "Tuner_min_pos",
+            "Mode_Indicator",
+            "P_ges_plus10%_plus20%",
+        ]
+        p = Pool(3)
+        try:
+            argss = [{
+                "x": x,
+                "PATH": f,
+                "PARAMS": self.PARAMS,
+                "WANTEDRESULTS": WANTEDRESULTS
+            } for f in self.files]
+            results = p.map(gen_results, argss)
+            p.close()
+            results = dict(zip(self.files, results))
+            cost = compute_cost(self)
+            if self.fopt > cost:
+                self.fopt = cost
+                self.xopt = x
+            return cost
+        except KeyboardInterrupt:
+            p.terminate()
+
+
+class opt2:
+    '''optimizes frequenzy'''
+
+    def __init__(self, path: str):
+        self.xopt = None
+        self.fopt = np.inf
+        self.PARAMS = [
+            "sp_Shell_height",
+            "sp_Shell_width",
+        ]
+        self.monitor0 = monitor(["cost"] + self.PARAMS)
+        assert path[-4:] == ".cst"
+        self.files = [
+            path,
+        ]
+
+    def __del__(self):
+        pass
+
+    def run(self):
+        '''starts minimizer'''
+        def gen_x0():
+            x0 = []
+            with cmr.CST_Model(self.files[0], autoanswer="n") as model:
+                for par in self.PARAMS:
+                    x0.append(model.getParam(par)[2])
+            return x0
+        x0 = gen_x0()
+        assert len(x0) == len(self.PARAMS)
+        try:
+            res = minimize(self.cost, x0)
+            print(res.x)
+            print(self.xopt)
+            self.xopt = res.x
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
+        print("best parameters", self.xopt)
+        with cmr.CST_Model(self.files[0]) as model:
+            for i, par in enumerate(self.PARAMS):
+                model.editParam(par, self.xopt[i])
+
+    def cost(self, x: np.ndarray):
+        def value(file: str, pattern: str):
+            '''searches for result matching your pattern'''
+            result_tmp = []
+            ress = results[file]
+            for name, val in ress:
+                if pattern in name:
+                    result_tmp.append(val)
+            if len(result_tmp) != 1:
+                print(result_tmp, pattern)
+                raise Exception(
+                    "Pattern matches multible results\nPattern:%s\nAvailable Results:%s"
+                    % (pattern, ress))
+            return result_tmp[0]
+
+        def compute_cost(self):
+            costs = []
+
+            frequency0 = value(self.files[0], "Frequency (Mode 1)")
+            target = 108.408
+            weight = 100
+            costs.append(abs((frequency0 - target) * weight))
+
+            U_deviation_mean = abs(value(self.files[0], "U_deviation_mean"))
+            target = 0
+            weight = 1
+            costs.append(abs((U_deviation_mean - target) * weight))
+
+            # "U_deviation Gap",
+            for i in range(12):
+                U_deviation_G = abs(
+                    value(self.files[0], "U_deviation Gap%d.rd0" % (i + 1)))
+                target = 0.05
+                weight = 1
+                if U_deviation_G > target:
+                    costs.append(abs((U_deviation_G - target) * weight))
+                else:
+                    costs.append(0)
+            return np.sum(costs)
+
+        WANTEDRESULTS = [
+            "U_deviation_mean.rd0",
+            "Frequency (Mode 1)",
+            "U_deviation Gap",
+        ]
+        argss = [{
+            "x": x,
+            "PATH": f,
+            "PARAMS": self.PARAMS,
+            "WANTEDRESULTS": WANTEDRESULTS
+        } for f in self.files]
+        results = [gen_results(argss[0])]
+        results = dict(zip(self.files, results))
+        cost = compute_cost(self)
+        if self.fopt > cost:
+            self.fopt = cost
+            self.xopt = x
         return cost
 
 
-class goals():
-    '''Class to manage all goals'''
-    memory = []
-    operators = [">", "<", "="]
+def gen_results(keywordarguments: dict):
+    '''collects results'''
+    def match(itm: str, lst: list):
+        '''checks if itm is contained in substrings of lst'''
+        itm = itm.lower()
+        lst = [l.lower() for l in lst]
+        for l in lst:
+            if l in itm:
+                return True
+        return False
 
-    def add(self, name, operator, target, weight=1.0):
-        assert operator in goals.operators
-        assert isinstance(target, float)
-        assert isinstance(weight, float)
-        assert weight > 0
-        goals.memory.append([name, operator, target, weight])
-
-    def get(self):
-        return goals.memory
-
-
-class tests():
-
-    def opt_f0():
-        plt.figure(1)
-        plt.ion()
-        plt.draw()
-        plt.pause(0.1)
-        plt.show()
-        path = "C:/Users/Simon/Desktop/Optimizer-test/optf0test.cst"
-        opt = optimizer(path)
-        opt.set_variable([
-            "sp_Shell_width",
-            "sp_Shell_height",
-        ])
-
-        opt.set_goal(name="Frequency (Mode 1)", operator="=", target=108.408)
-
-        # opt.set_solver_server("141.2.245.144", "36100")
-        opt.start_minimizer()
+    x = keywordarguments["x"]  # this is the input vector from scipy minimizer
+    PATH = keywordarguments["PATH"]
+    PARAMS = keywordarguments["PARAMS"]
+    WANTEDRESULTS = keywordarguments["WANTEDRESULTS"]
+    model = cmr.CST_Model(PATH, autoanswer="n")
+    for i, parname in enumerate(PARAMS):
+        model.editParam(parname, x[i])
+    model.cst_rebuild()
+    returncode = model.cst_run_eigenmode()
+    if returncode != 0:
+        print("Eigenmode computation failed\nRetry 1")
+        model.cst_run_eigenmode()
+    resultnames = model.getResultNames()
+    resultnames = [_x for _x in resultnames if match(_x, WANTEDRESULTS)]
+    results = []
+    for resname in resultnames:
+        results.append([resname, model.getResult(resname)])
+    return results
 
 
 if __name__ == "__main__":
-    tests.opt_f0()
+    paths = ["C:/Users/Simon/Desktop/Optimizer-test/optf0test.cst"]
+    for path in paths:
+        opt2(path).run()
