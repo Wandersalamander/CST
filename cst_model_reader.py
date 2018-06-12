@@ -480,7 +480,7 @@ class CST_Model:
         self.toggle_mute(silent=True)
         return returncode
 
-    def cst_run_eigenmode(self, dc=None):
+    def cst_run_eigenmode(self, dc=None, timeout=None):
         '''Runs eigenmode solver for the model.
 
         Note
@@ -502,7 +502,7 @@ class CST_Model:
         flags = " -m -e "
         self.message(str(self), "running Eigenmode Solver")
         self.toggle_mute(silent=True)
-        returncode = self._run(flags, dc=dc)
+        returncode = self._run(flags, dc=dc, timeout=timeout)
         self.toggle_mute(silent=True)
         return returncode
         # cmd = self.cst_path + flags + self.filename
