@@ -75,6 +75,12 @@ class CST_Model:
     def __repr__(self):
         return self.filename
 
+    def __exit__(self, *args):
+        del self
+
+    def __enter__(self):
+        return self
+
     def message(self, *args, **kwargs):
         '''Prints a message if self.verbose set to True.
 
