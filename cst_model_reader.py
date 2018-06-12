@@ -130,7 +130,7 @@ class CST_Model:
             All files in cst files ResultPath specified in __init__'''
         filepaths = f.get_files(self.ResultPath, filetypes)
         # removing long path to display only the names of the files
-        return [filename.split("/")[-1] for filename in filepaths]
+        return [os.path.basename(filename) for filename in filepaths]
 
     def getResult(self, Resultname, filetype=".rd0", runID="0"):
         '''Reads Result from Result folder
