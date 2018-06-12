@@ -376,7 +376,7 @@ def gen_results(keywordarguments: dict):
     returncode = model.cst_run_eigenmode()
     if returncode != 0:
         print("Eigenmode computation failed\nRetry 1")
-        model.cst_run_eigenmode()
+        model.cst_run_eigenmode(timeout=30 * 60)
     resultnames = model.getResultNames()
     resultnames = [_x for _x in resultnames if match(_x, WANTEDRESULTS)]
     results = []

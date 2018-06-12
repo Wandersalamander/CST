@@ -440,8 +440,9 @@ class CST_Model:
         try:
             p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            raise TimeoutError(
-                cmd + "\nCommand reached timeout of %d seconds" % timeout)
+            return 1
+            # raise TimeoutError(
+            #     cmd + "\nCommand reached timeout of %d seconds" % timeout)
         # except KeyboardInterrupt:
         #     # try:
         #     p.terminate()
@@ -492,6 +493,8 @@ class CST_Model:
         dc : str
             distributed comuting as "maincontroller:port" like
             "142.2.245.136:360000"
+        timeout : int or float, optional
+            time in seconds till the command is terminated
 
         Returns
         -------
