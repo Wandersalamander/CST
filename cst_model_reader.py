@@ -154,7 +154,7 @@ class CST_Model:
         Returns
         -------
         float
-            float of first line in corresponding rd0-file
+            float of first line in corresponding filetype
 
         '''
         if runID != "0":
@@ -302,6 +302,25 @@ class CST_Model:
             return True
         except ValueError:
             return False
+
+    def editParams(self, Paramentervaluepairs: dict):
+        '''Imports a dictionary of Parameters to cst file
+
+        Parameters
+        ----------
+        Paramentervaluepairs: dictianory
+            keys: Parameternames
+            values: value
+        '''
+        filename = self.FilePath + "par_tmp.par"
+        with open(filename, "w") as file:
+            for key in Paramentervaluepairs:
+                assert self.isParam(key)
+                value = Paramentervaluepairs[key]
+                file.write(key + "\t\t\t" + str(value) + "\n")
+            assert os.path.isfile(self.filename)
+            self.cst_import_parfile(filename)
+        os.remove(filename)
 
     def editParam(self, Paramname, value, method="scary"):
         '''Edits the parameter value.
