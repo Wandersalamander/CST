@@ -7,8 +7,6 @@ import argparse
 from scipy.optimize import minimize
 from shutil import copyfile, copytree, rmtree
 import numpy as np
-# cst model reader path here
-sys.path.append("C:/Users/Simon/Documents/CST")
 import cst_model_reader as cmr
 from cst_model_reader_config import config
 import json

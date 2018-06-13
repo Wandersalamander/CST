@@ -128,9 +128,17 @@ class CST_Model:
         ------
         list
             All files in cst files ResultPath specified in __init__'''
-        filepaths = f.get_files(self.ResultPath, filetypes)
-        # removing long path to display only the names of the files
-        return [os.path.basename(filename) for filename in filepaths]
+        res = []
+        root = self.ResultPath
+        for path, subdirs, files in os.walk(root):
+            for name in files:
+                resname = os.path.join(path, name)
+                resname = resname.replace("\\", "/")
+                resname = resname.replace(root, "")
+                for ft in filetypes:
+                    if ft in resname:
+                        res.append(resname.replace(ft, ""))
+        return res
 
     def getResult(self, Resultname, filetype=".rd0", runID="0"):
         '''Reads Result from Result folder
@@ -161,10 +169,7 @@ class CST_Model:
             raise AttributeError("Only runID '0' allowed")
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
-        if Resultname[-4] != filetype:
-            splt = Resultname.split(".")
-            assert len(splt) <= 2
-            Resultname = splt[0] + filetype
+        Resultname = Resultname + filetype
         file = open(self.ResultPath + Resultname, mode='r')
         return float(file.readline())
 
