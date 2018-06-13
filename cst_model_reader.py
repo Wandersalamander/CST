@@ -1,10 +1,14 @@
 import functions as f
 import os
+import time
 import shutil
 import copy
 import subprocess
 from cst_model_reader_config import config
-
+from pandas import DataFrame
+# from pandas import read_csv
+import pandas as pd
+import numpy as np
 
 class CST_Model:
     '''Multiple tools to access a cst file.
@@ -526,6 +530,7 @@ class CST_Model:
         self.toggle_mute(silent=True)
         returncode = self._run(flags, dc=dc, timeout=timeout)
         self.toggle_mute(silent=True)
+        self.__export_csv()
         return returncode
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
@@ -587,9 +592,26 @@ class CST_Model:
         self.toggle_mute(silent=True)
         return returncode
 
-    def export_csv(self):
-        print("export not implemented yet")
-        pass
+    def __export_csv(self, target=None):
+        def gen_DataFrame():
+            '''Creates a dataframe of all results and parameters'''
+            dct = {}
+            params = self.getParams()
+            for name, eq, val in params:
+                dct[name] = [val]
+            results = self.getResults()
+            for key in results:
+                dct[key] = [results[key]]
+            return DataFrame.from_dict(dct)
+        delimiter = ";"
+        if not target:
+            target = self.FilePath + "Results.csv"
+        df = gen_DataFrame()
+        if os.path.isfile(target):
+            df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
+            df = pd.concat([df, df0], ignore_index=True)
+        df.to_csv(target, sep=delimiter)
+        print("wrote to csv")
 
     def sweep(self, Paramname, values, dc=None, flags=None):
         '''Performs a Eigenmode Sweep on the given values.
