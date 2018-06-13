@@ -173,6 +173,20 @@ class CST_Model:
         file = open(self.ResultPath + Resultname, mode='r')
         return float(file.readline())
 
+    def getResults(self):
+        '''Returns all rd0 results containesd in resultpath
+
+        Returns
+        -------
+        res: dictionary
+            keys: str, result names
+            values: float, result values
+        '''
+        res = {}
+        for resname in self.getResultNames():
+            res[resname] = self.getResult(resname)
+        return res
+
     def getParams(self):
         '''Loads and returns all parametes
 
