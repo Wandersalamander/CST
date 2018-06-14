@@ -224,11 +224,11 @@ class opt1:
             return np.sum(costs)
 
         WANTEDRESULTS = [
-            "U_deviation_mean.rd0",
+            "U_deviation_mean",
             "Frequency (Mode 1)",
             "Frequency (Mode 2)",
             "U_deviation Gap",
-            "delta_mean.rd0",
+            "delta_mean",
             "Tuner_min_pos",
             "Mode_Indicator",
             "P_ges_plus10%_plus20%",
@@ -248,7 +248,8 @@ class opt1:
             if self.fopt > cost:
                 self.fopt = cost
                 self.xopt = x
-            with open("D:\Simulation\current\python_script\%s.log"%str(hash(self.files[0])), "a") as objf:
+            print("writing cost")
+            with open("D:/Simulation/current/python_script/%s.log"%str(hash(self.files[0])), "a") as objf:
                 objf.write(str(cost) + "\t\t" + "[" + " ".join(str(xi) for xi in x) + "]\n")
             return cost
         except KeyboardInterrupt:
@@ -387,7 +388,7 @@ def gen_results(keywordarguments: dict):
     return results
 
 
-if __name__ == "__main__":
-    paths = ["C:/Users/Simon/Desktop/Optimizer-test/optf0test.cst"]
-    for path in paths:
-        opt2(path).run()
+# if __name__ == "__main__":
+#     paths = ["C:/Users/Simon/Desktop/Optimizer-test/optf0test.cst"]
+#     for path in paths:
+#         opt2(path).run()

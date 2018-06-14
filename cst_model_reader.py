@@ -605,7 +605,7 @@ class CST_Model:
             return DataFrame.from_dict(dct)
         delimiter = ";"
         if not target:
-            target = self.FilePath + "Results.csv"
+            target = self.FilePath + "Results%s.csv" % str(self)
         df = gen_DataFrame()
         if os.path.isfile(target):
             df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
