@@ -7,8 +7,6 @@ import argparse
 from scipy.optimize import minimize
 from shutil import copyfile, copytree, rmtree
 import numpy as np
-# cst model reader path here
-sys.path.append("C:/Users/Simon/Documents/CST")
 import cst_model_reader as cmr
 from cst_model_reader_config import config
 import json
@@ -248,8 +246,6 @@ class opt1:
             if self.fopt > cost:
                 self.fopt = cost
                 self.xopt = x
-            with open("D:\Simulation\current\python_script\%s.log"%str(hash(self.files[0])), "a") as objf:
-                objf.write(str(cost) + "\t\t" + "[" + " ".join(str(xi) for xi in x) + "]\n")
             return cost
         except KeyboardInterrupt:
             p.terminate()
