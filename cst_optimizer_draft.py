@@ -194,7 +194,7 @@ class opt1:
             #         costs.abs(append((delta_mean - target) * weight))
 
             # "Tuner_min_pos",
-            Tuner_min_pos = abs(value(self.files[0], "Tuner_min_pos"))
+            Tuner_min_pos = abs(value(self.files[0], "Tuner_min_pos_%"))
             target = 80
             weight = 1
             if Tuner_min_pos > target:
