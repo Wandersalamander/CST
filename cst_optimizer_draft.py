@@ -65,6 +65,7 @@ class opt1:
     '''optimizes tuner and everything'''
 
     def __init__(self, path: str):
+        self.path = path
         self.xopt = None
         self.fopt = np.inf
         self.PARAMS = [
@@ -249,7 +250,10 @@ class opt1:
                 self.fopt = cost
                 self.xopt = x
             print("writing cost")
-            with open("D:/Simulation/current/python_script/%s.log"%str(hash(self.files[0])), "a") as objf:
+            p = self.path.replace("\\", "/")
+            p = p.split("/")[:-1]
+            p = p.join("/") + "/"
+            with open(p + "%s.log"%str(hash(self.files[0])), "a") as objf:
                 objf.write(str(cost) + "\t\t" + "[" + " ".join(str(xi) for xi in x) + "]\n")
             return cost
         except KeyboardInterrupt:
