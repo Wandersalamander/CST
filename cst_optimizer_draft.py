@@ -147,7 +147,7 @@ class opt1:
 
             frequency0 = value(self.files[0], "Frequency (Mode 1)")
             target = 108.408
-            weight = 100
+            weight = 10
             costs.append(abs((frequency0 - target) * weight))
 
             frequency01 = abs(value(self.files[0], "Frequency (Mode 1)") -
@@ -161,7 +161,7 @@ class opt1:
 
             U_deviation_mean = abs(value(self.files[0], "U_deviation_mean"))
             target = 0
-            weight = 1
+            weight = 100
             costs.append(abs((U_deviation_mean - target) * weight))
 
             U_deviation_mean_max = max(
@@ -170,7 +170,7 @@ class opt1:
                 abs(value(self.files[2], "U_deviation_mean")),
             )
             target = 0.1
-            weight = 10
+            weight = 10 * 100
             if U_deviation_mean_max > target:
                 costs.append(abs((U_deviation_mean_max - target) * weight))
             else:
@@ -181,7 +181,7 @@ class opt1:
                 U_deviation_G = abs(
                     value(self.files[0], "U_deviation Gap%d" % (i + 1)))
                 target = 0.05
-                weight = 1
+                weight = 100
                 if U_deviation_G > target:
                     costs.append(abs((U_deviation_G - target) * weight))
                 else:
