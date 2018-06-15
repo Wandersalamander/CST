@@ -178,7 +178,7 @@ class opt1:
             # "U_deviation Gap",
             for i in range(12):
                 U_deviation_G = abs(
-                    value(self.files[0], "U_deviation Gap%d.rd0" % (i + 1)))
+                    value(self.files[0], "U_deviation Gap%d" % (i + 1)))
                 target = 0.05
                 weight = 1
                 if U_deviation_G > target:
@@ -328,7 +328,7 @@ class opt2:
             # "U_deviation Gap",
             for i in range(12):
                 U_deviation_G = abs(
-                    value(self.files[0], "U_deviation Gap%d.rd0" % (i + 1)))
+                    value(self.files[0], "U_deviation Gap%d" % (i + 1)))
                 target = 0.05
                 weight = 1
                 if U_deviation_G > target:
@@ -338,7 +338,7 @@ class opt2:
             return np.sum(costs)
 
         WANTEDRESULTS = [
-            "U_deviation_mean.rd0",
+            "U_deviation_mean",
             "Frequency (Mode 1)",
             "U_deviation Gap",
         ]
