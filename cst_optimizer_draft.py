@@ -229,7 +229,7 @@ class opt1:
             "Frequency (Mode 2)",
             "U_deviation Gap",
             "delta_mean",
-            "Tuner_min_pos",
+            "Tuner_min_pos_%",
             "Mode_Indicator",
             "P_ges_plus10%_plus20%",
         ]
@@ -303,7 +303,7 @@ class opt2:
             result_tmp = []
             ress = results[file]
             for name, val in ress:
-                if pattern in name:
+                if pattern == name and len(pattern) == len(name):
                     result_tmp.append(val)
             if len(result_tmp) != 1:
                 print(result_tmp, pattern)
