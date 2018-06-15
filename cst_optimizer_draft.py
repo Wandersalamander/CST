@@ -126,7 +126,7 @@ class opt1:
             result_tmp = []
             ress = results[file]
             for name, val in ress:
-                if pattern in name:
+                if pattern == name and len(pattern) == len(name):
                     result_tmp.append(val)
             if len(result_tmp) != 1:
                 print(result_tmp, pattern)
