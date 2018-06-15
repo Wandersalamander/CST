@@ -252,7 +252,7 @@ class opt1:
             print("writing cost")
             p = self.path.replace("\\", "/")
             p = p.split("/")[:-1]
-            p = p.join("/") + "/"
+            p = "/".join(p) + "/"
             with open(p + "%s.log"%str(hash(self.files[0])), "a") as objf:
                 objf.write(str(cost) + "\t\t" + "[" + " ".join(str(xi) for xi in x) + "]\n")
             return cost
