@@ -115,12 +115,19 @@ def suggest(path, regressor=Ridge()):
     return res.x
 
 
-def optimize(path):
+def optimize(path, cost_target=1):
+    '''Optimizes a cst file using machine learning
+
+    Notes
+    -----
+    path should also contain all previous results
+    represented in the variouse logfiles "strangenumber.log"
+    '''
     assert ".cst" in path
     p1 = "/".join(path.split("/")[:-1])
     x = suggest(p1)
     cost = cst_opt.opt1(path).cost(x)
-    while cost > 1:
+    while cost > cost_target:
         x = suggest(p1)
         cost = cst_opt.opt1(path).cost(x)
         print("COST", cost)
