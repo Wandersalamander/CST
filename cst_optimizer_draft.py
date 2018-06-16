@@ -253,8 +253,9 @@ class opt1:
             p = self.path.replace("\\", "/")
             p = p.split("/")[:-1]
             p = "/".join(p) + "/"
-            with open(p + "%s.log"%str(hash(self.files[0])), "a") as objf:
-                objf.write(str(cost) + "\t\t" + "[" + " ".join(str(xi) for xi in x) + "]\n")
+            with open(p + "%s.log" % str(hash(self.files[0])), "a") as objf:
+                objf.write(str(cost) + "\t\t" +
+                           "[" + " ".join(str(xi) for xi in x) + "]\n")
             return cost
         except KeyboardInterrupt:
             p.terminate()
@@ -381,9 +382,14 @@ def gen_results(keywordarguments: dict):
         model.editParam(parname, x[i])
     model.cst_rebuild()
     returncode = model.cst_run_eigenmode()
-    if returncode != 0:
-        print("Eigenmode computation failed\nRetry 1")
+    iteration = 0
+    while returncode != 0:
+        print("Eigenmode computation failed\nRetry", iteration)
         model.cst_run_eigenmode(timeout=30 * 60)
+        time.sleep(60 * 5)
+        iteration += 1
+        if iteration == 6:
+            break
     resultnames = model.getResultNames()
     resultnames = [_x for _x in resultnames if match(_x, WANTEDRESULTS)]
     results = []
