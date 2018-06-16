@@ -10,6 +10,7 @@ from pandas import DataFrame
 import pandas as pd
 import numpy as np
 
+
 class CST_Model:
     '''Multiple tools to access a cst file.
 
@@ -464,18 +465,20 @@ class CST_Model:
             p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             return 1
-            # raise TimeoutError(
-            #     cmd + "\nCommand reached timeout of %d seconds" % timeout)
-        # except KeyboardInterrupt:
-        #     # try:
-        #     p.terminate()
-        #     # except OSError:
-        #     #    pass
-        # p.wait()
+        retcodes = {
+            "0": "EXITCODE_SUCCESS",
+            "1": "EXITCODE_FAILED",
+            "2": "EXITCODE_ABORTEDBYUSER",
+            "3": "EXITCODE_NOLICENSE",
+            "4": "EXITCODE_FAILED_TO_OPEN",
+        }
         if p.returncode != 0:
             print(self.__str__(),)
             print("\tCommand", cmd)
-            print("\treturncode", p.returncode)
+            print(
+                "\treturncode %s: %s"
+                (p.returncode, retcodes[str(p.returncode)])
+            )
         return p.returncode
 
     def cst_rebuild(self, timeout=5 * 60):
@@ -530,7 +533,8 @@ class CST_Model:
         self.toggle_mute(silent=True)
         returncode = self._run(flags, dc=dc, timeout=timeout)
         self.toggle_mute(silent=True)
-        self.__export_csv()
+        if returncode == 0:
+            self.__export_csv()
         return returncode
         # cmd = self.cst_path + flags + self.filename
         # subprocess.call(cmd)
