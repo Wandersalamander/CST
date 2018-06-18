@@ -6,6 +6,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import Ridge
 import cst_model_reader as cmr
 import cst_optimizer_draft as cst_opt
+from sklearn.ensemble import RandomForestRegressor, AdaBoostRegressor
 import os
 
 
@@ -71,8 +72,13 @@ class MachineLearningModel:
 
     def __init__(self, paths, regressor=Ridge()):
         X, Y = genXY(paths)
-        self.rgsr = regressor
-        self.rgsr.fit(X, Y)
+        if len(Y[Y < 20]) > 20:
+            X, Y = X[Y < 20], Y[Y < 20]
+            W = 1 / Y**3
+        self.rgsr = AdaBoostRegressor(
+            base_estimator=regressor, n_estimators=37)
+        self.rgsr.fit(X, Y, W)
+        print("Current regressor R**2 score", self.rgsr.score(X, Y))
 
     def cost(self, x):
         '''Predicts cost based on all logfiles'''
@@ -126,10 +132,13 @@ def optimize(path, cost_target=1):
     assert ".cst" in path
     p1 = "/".join(path.split("/")[:-1])
     x = suggest(p1)
-    cost = cst_opt.opt1(path).cost(x)
+    opt = cst_opt.opt1(path)
+    cost = opt.cost(x)
+    print("COST", cost)
+    print("\n" * 3)
     while cost > cost_target:
         x = suggest(p1)
-        cost = cst_opt.opt1(path).cost(x)
+        cost = opt.cost(x)
         print("COST", cost)
         print("\n" * 3)
     return x

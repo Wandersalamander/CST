@@ -76,7 +76,7 @@ class opt1:
             "sp_Tuner_y",
             "sp_Undercut",
         ]
-        self.monitor0 = monitor(["cost"] + self.PARAMS)
+        # self.monitor0 = monitor(["cost"] + self.PARAMS)
         assert path[-4:] == ".cst"
         self.files = [
             path,
@@ -220,7 +220,7 @@ class opt1:
                 costs.append(abs((P_ges - target) * weight))
             else:
                 costs.append(0)
-            self.monitor0.plot([np.sum(costs)] + list(x))
+            # self.monitor0.plot([np.sum(costs)] + list(x))
             print("cost:", np.sum(costs), list(costs))
             return np.sum(costs)
 
