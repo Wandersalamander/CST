@@ -467,7 +467,7 @@ class CST_Model:
         # returncode = subprocess.call(cmd)
         p = subprocess.Popen(cmd)
         try:
-            p.wait(timeout=timeout)
+            return p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             return 1
         # retcodes = {
