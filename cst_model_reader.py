@@ -518,6 +518,7 @@ class CST_Model:
         Note
         ----
         flags = " -m -e "
+        Exports CSV to self.path + self.csv_name
 
         Parameters
         ----------
@@ -541,8 +542,6 @@ class CST_Model:
         if returncode == 0:
             self.__export_csv()
         return returncode
-        # cmd = self.cst_path + flags + self.filename
-        # subprocess.call(cmd)
 
     def cst_run_optimizer(self, dc=None):
         '''Runs microwave studio optimizer for the model.
@@ -569,8 +568,6 @@ class CST_Model:
         returncode = self._run(flags, dc=dc)
         self.toggle_mute(silent=True)
         return returncode
-        # cmd = self.cst_path + flags + self.filename
-        # subprocess.call(cmd)
 
     def cst_import_parfile(self, parfilepath, timeout=600):
         '''Runs CST routine for importing .par file.
