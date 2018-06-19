@@ -342,7 +342,7 @@ class CST_Model:
         for key in Paramentervaluepairs:
             assert self.isParam(key)
             value = Paramentervaluepairs[key]
-            line = key + "\t\t\t" + str(value) + "\n"
+            line = key + "=" + str(value) + "\n"
             file.write(line)
         file.close()
         assert os.path.isfile(self.filename)
@@ -418,12 +418,13 @@ class CST_Model:
         def slow(self, Paramname, value,):
             filename = self.FilePath + "par_tmp.par"
             file = open(filename, "w")
-            file.write(Paramname + "\t\t\t" + str(value))
+            file.write(Paramname + "=" + str(value))
             file.close()
             assert os.path.isfile(self.filename)
             self.cst_import_parfile(filename)
             os.remove(filename)
 
+        print("editParam is deprecated, use editParams instead")
         methods = ["slow", "scary"]
         assert method in methods
         assert self.isParam(Paramname)
