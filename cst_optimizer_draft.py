@@ -12,7 +12,7 @@ sys.path.append("C:/Users/Simon/Documents/CST")
 import cst_model_reader as cmr
 from cst_model_reader_config import config
 import json
-
+import cst_optimizer_machinlearning as cstML
 
 # def persist_to_file(file_name):
 
@@ -94,6 +94,9 @@ class opt1:
             m2.editParam("sp_Tuner", _par[i])
             del m2  # deletes python-object, not file
 
+    def __str__(self):
+        return "Opt1 " + self.path
+
     def __del__(self):
         for i, file in enumerate(self.files[1:]):
             os.remove(file)
@@ -107,10 +110,23 @@ class opt1:
                 for par in self.PARAMS:
                     x0.append(model.getParam(par)[2])
             return x0
+
+        def gen_simplex():
+            _path = "/".join(self.path.split("/")[:-1]) + "/"
+            paths = os.listdir(_path)
+            paths = [_path + p for p in paths if ".log" in p]
+            X, Y = cstML.genXY(paths)
+            arr1inds = Y.argsort()
+            X_sorted = X[arr1inds, :]
+            initial_simplex = X_sorted[:X_sorted.shape[1] + 1, :]
+            return initial_simplex
+
         x0 = gen_x0()
         assert len(x0) == len(self.PARAMS)
         try:
-            res = minimize(self.cost, x0)
+            initial_simplex = gen_simplex()
+            res = minimize(self.cost, x0, method="Nelder-Mead",
+                           options={"initial_simplex": initial_simplex})
             print(res.x)
             print(self.xopt)
             self.xopt = res.x
@@ -242,8 +258,10 @@ class opt1:
                 "PARAMS": self.PARAMS,
                 "WANTEDRESULTS": WANTEDRESULTS
             } for f in self.files]
+            print("pooling")
             results = p.map(gen_results, argss)
             p.close()
+            print("end pooling")
             results = dict(zip(self.files, results))
             cost = compute_cost(self)
             if self.fopt > cost:
