@@ -31,6 +31,8 @@ class CST_Model:
 
     Attributes
     ----------
+    csv_name: str
+        how to name the csv when exporting
     parhandler : :obj:`parfile`
         Refer to class parfile.
     verbose : bool
@@ -55,8 +57,7 @@ class CST_Model:
             ".")[:-1]  # removing fileextension
         # navigating to subfolder of file
         self.ResultPath = "".join(self.ResultPath) + "/Result/"
-        # self.ParamPath = "".join(self.filename.split(
-        #     ".")[:-1]) + "/Model/3D/" + "Model.par"
+        self.csv_name = "Results%s.csv" % str(self)
         if cst_path:
             self.cst_path = cst_path
         else:
@@ -337,13 +338,16 @@ class CST_Model:
             values: value
         '''
         filename = self.FilePath + "par_tmp.par"
-        with open(filename, "w") as file:
-            for key in Paramentervaluepairs:
-                assert self.isParam(key)
-                value = Paramentervaluepairs[key]
-                file.write(key + "\t\t\t" + str(value) + "\n")
-            assert os.path.isfile(self.filename)
-            self.cst_import_parfile(filename)
+        file = open(filename, "w")
+        for key in Paramentervaluepairs:
+            assert self.isParam(key)
+            value = Paramentervaluepairs[key]
+            line = key + "\t\t\t" + str(value) + "\n"
+            file.write(line)
+        file.close()
+        assert os.path.isfile(self.filename)
+        self.cst_import_parfile(filename)
+        self._loadParams()
         os.remove(filename)
 
     def editParam(self, Paramname, value, method="scary"):
@@ -465,20 +469,20 @@ class CST_Model:
             p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             return 1
-        retcodes = {
-            "0": "EXITCODE_SUCCESS",
-            "1": "EXITCODE_FAILED",
-            "2": "EXITCODE_ABORTEDBYUSER",
-            "3": "EXITCODE_NOLICENSE",
-            "4": "EXITCODE_FAILED_TO_OPEN",
-        }
-        if p.returncode != 0:
-            print(self.__str__(),)
-            print("\tCommand", cmd)
-            print(
-                "\treturncode %s: %s"
-                (p.returncode, retcodes[str(p.returncode)])
-            )
+        # retcodes = {
+        #     "0": "EXITCODE_SUCCESS",
+        #     "1": "EXITCODE_FAILED",
+        #     "2": "EXITCODE_ABORTEDBYUSER",
+        #     "3": "EXITCODE_NOLICENSE",
+        #     "4": "EXITCODE_FAILED_TO_OPEN",
+        # }
+        # if p.returncode != 0:
+        #     print(self.__str__(),)
+        #     print("\tCommand", cmd)
+        #     print(
+        #         "\treturncode %s: %s"
+        #         (p.returncode, retcodes[str(p.returncode)])
+        #     )
         return p.returncode
 
     def cst_rebuild(self, timeout=5 * 60):
@@ -596,7 +600,7 @@ class CST_Model:
         self.toggle_mute(silent=True)
         return returncode
 
-    def __export_csv(self, target=None):
+    def __export_csv(self):
         def gen_DataFrame():
             '''Creates a dataframe of all results and parameters'''
             dct = {}
@@ -608,14 +612,13 @@ class CST_Model:
                 dct[key] = [results[key]]
             return DataFrame.from_dict(dct)
         delimiter = ";"
-        if not target:
-            target = self.FilePath + "Results%s.csv" % str(self)
+        target = self.FilePath + self.csv_name
         df = gen_DataFrame()
         if os.path.isfile(target):
             df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
             df = pd.concat([df, df0], ignore_index=True)
         df.to_csv(target, sep=delimiter)
-        print("wrote to csv")
+        print(str(self), "wrote to csv")
 
     def sweep(self, Paramname, values, dc=None, flags=None):
         '''Performs a Eigenmode Sweep on the given values.
