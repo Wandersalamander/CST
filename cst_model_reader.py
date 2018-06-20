@@ -469,6 +469,7 @@ class CST_Model:
         try:
             return p.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
+            p.kill()
             return 1
         # retcodes = {
         #     "0": "EXITCODE_SUCCESS",
