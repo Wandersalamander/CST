@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def get_files(path, filetypes=[".jpg"]):
     ''' path: string
 
@@ -12,7 +15,8 @@ def get_files(path, filetypes=[".jpg"]):
     for i in range(len(filetypes)):
         if filetypes[i][0] != ".":
             print()
-            print("WARNING: " + filetypes[i] + " overwritten with ." + filetypes[i])
+            print("WARNING: " + filetypes[i] +
+                  " overwritten with ." + filetypes[i])
             print()
             filetypes[i] = "." + filetypes[i]
     onlyfiles = [f for f in listdir(path) if isfile(join(path, f))]
@@ -81,6 +85,55 @@ def timeStamp():
     if len(m) == 1:
         m = "0" + m
     return "_" + m + "_" + y
+
+
+def read_fuckfile(path):
+    '''reads this stange logfile formart
+
+    Note
+    ----
+    All files in path a taken into accout
+    so make sure all logfiles in this dictionary
+    belong to the same cst structure
+
+    Returns
+    -------
+    ndarray, ndarray
+        X and Y as used in sklearn
+    '''
+    assert ".log" in path
+    X, Y = [], []
+    with open(path, "r") as file:
+        for line in file.readlines():
+            line = line.replace("\n", "")
+            y_raw, x_raw = line.split("\t\t")
+            y = float(y_raw)
+            x = x_raw.replace("[", "").replace("]", "").split(" ")
+            x = list(map(float, x))
+            X.append(x)
+            Y.append(y)
+    X = np.array(X)
+    Y = np.array(Y)
+    return X, Y
+
+
+def genXY(paths):
+    '''Reads all logfiles and generates X and Y
+
+    Returns
+    -------
+    ndarray, ndarray
+        X and Y as used in sklearn
+    '''
+    Xs, Ys = [], []
+    for p in paths:
+        Xi, Yi = read_fuckfile(p)
+        Xs.append(Xi)
+        Ys.append(Yi)
+    X = np.concatenate(Xs, axis=0)
+    Y = np.concatenate(Ys, axis=0)
+    return X, Y
+
 
 if __name__ == "__main__":
     testcases()

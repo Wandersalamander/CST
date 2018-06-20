@@ -12,7 +12,7 @@ sys.path.append("C:/Users/Simon/Documents/CST")
 import cst_model_reader as cmr
 from cst_model_reader_config import config
 import json
-import cst_optimizer_machinlearning as cstML
+import functions as funcs
 
 # def persist_to_file(file_name):
 
@@ -115,7 +115,7 @@ class opt1:
             _path = "/".join(self.path.split("/")[:-1]) + "/"
             paths = os.listdir(_path)
             paths = [_path + p for p in paths if ".log" in p]
-            X, Y = cstML.genXY(paths)
+            X, Y = funcs.genXY(paths)
             arr1inds = Y.argsort()
             X_sorted = X[arr1inds, :]
             initial_simplex = X_sorted[:X_sorted.shape[1] + 1, :]
