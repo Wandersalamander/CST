@@ -653,8 +653,6 @@ class Parfile:
 def TEST():
     path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
     ih = CstModel(path, autoanswer="A")
-    names = ih.get_resultnames()
-    print(names)
     ih._load_parameters()
     assert ih.is_parameter("lackschmack") is False
     assert ih.is_parameter("Mesh_model") is True
@@ -663,13 +661,18 @@ def TEST():
     print(params)
     # print(ih.get_parameter("tuner_stem_angle"))
     ih.edit_parameters({"Shell_length": 690,
-        "Mesh_model": 1,
-        "Mesh_local_tubes": 0,
-        "Mesh_background": 1,
-        "Mesh_local_vac": 0,
-        })
+                        "Mesh_model": 1,
+                        "Mesh_local_tubes": 0,
+                        "Mesh_background": 1,
+                        "Mesh_local_vac": 0,
+                        })
     ih.cst_run_eigenmode()
+    resnames = ih.get_resultnames()
+    for r in resnames:
+        ih.get_result(r)
     res = ih.get_results()
     print(res)
+
+
 if __name__ == "__main__":
     TEST()
