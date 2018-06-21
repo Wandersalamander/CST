@@ -1,17 +1,16 @@
-import functions as f
 import os
 import time
 import shutil
 import copy
 import subprocess
-from cst_model_reader_config import config
+from config import Configuration
 from pandas import DataFrame
 # from pandas import read_csv
 import pandas as pd
 import numpy as np
 
 
-class CST_Model:
+class CstModel:
     '''Multiple tools to access a cst file.
 
 
@@ -21,20 +20,20 @@ class CST_Model:
         Path to .cst file.
     cst_path : str, optional
         Path of cst.exe. If None, path of
-        cst_model_reader_config will be used.
+        config will be used.
     autoanswer : str, optional
         None, "Y" or "n"
         How to answer input-functions.
-        Refer to parfile-class.
-        Refer to parfile.__handle_existing_backup
+        Refer to Parfile-class.
+        Refer to Parfile.__handle_existing_backup
         for further information.
 
     Attributes
     ----------
     csv_name: str
         how to name the csv when exporting
-    parhandler : :obj:`parfile`
-        Refer to class parfile.
+    parhandler : :obj:`Parfile`
+        Refer to class Parfile.
     verbose : bool
         Wether messages should be printed or not.
 
@@ -51,35 +50,35 @@ class CST_Model:
             raise Warning(
                 '''Please remove spaces from filename'''
             )
-        self.filename = filename.replace("\\", "/")
-        self.FilePath = "/".join(filename.split("/")[:-1]) + "/"
-        self.ResultPath = self.filename.split(
+        self.FILENAME = filename.replace("\\", "/")
+        self.FILEPATH = "/".join(filename.split("/")[:-1]) + "/"
+        self.RESULTPATH = self.FILENAME.split(
             ".")[:-1]  # removing fileextension
         # navigating to subfolder of file
-        self.ResultPath = "".join(self.ResultPath) + "/Result/"
+        self.RESULTPATH = "".join(self.RESULTPATH) + "/Result/"
         self.csv_name = "Results%s.csv" % str(self)
         if cst_path:
-            self.cst_path = cst_path
+            self.CST_PATH = cst_path
         else:
             try:
-                self.cst_path = config.cst_path
+                self.CST_PATH = Configuration.cst_path
             except AttributeError:
-                config.__init__()
-                self.cst_path = config.cst_path
+                Configuration.__init__()
+                self.CST_PATH = Configuration.cst_path
 
-        self.parhandler = parfile(
-            path="".join(self.filename.split(".")[:-1]) +
+        self.parhandler = Parfile(
+            path="".join(self.FILENAME.split(".")[:-1]) +
             "/Model/3D/Model.par",
             master_cav=self,
             autoanswer=autoanswer
         )
 
     def __str__(self):
-        return self.filename.split(
+        return self.FILENAME.split(
             "/")[-1].split(".")[0]
 
     def __repr__(self):
-        return self.filename
+        return self.FILENAME
 
     def __exit__(self, *args):
         del self
@@ -118,12 +117,9 @@ class CST_Model:
         else:
             raise Exception("self.verbose is not bool", self.verbose)
 
-    def getResultNames(self, filetypes=[".rd0"]):
+    def get_resultnames(self, filetypes=[".rd0"]):
         '''Should return a list of all results in result path.
 
-        Note
-        ----
-        Results in sub-directories are not included yet.
 
         Parameters
         ----------
@@ -134,19 +130,20 @@ class CST_Model:
         ------
         list
             All files in cst files ResultPath specified in __init__'''
+        assert isinstance(filetypes, list)
         res = []
-        root = self.ResultPath
-        for path, subdirs, files in os.walk(root):
+        ROOT = self.RESULTPATH
+        for path, subdirs, files in os.walk(ROOT):
             for name in files:
                 resname = os.path.join(path, name)
                 resname = resname.replace("\\", "/")
-                resname = resname.replace(root, "")
+                resname = resname.replace(ROOT, "")
                 for ft in filetypes:
                     if ft in resname:
                         res.append(resname.replace(ft, ""))
         return res
 
-    def getResult(self, Resultname, filetype=".rd0", runID="0"):
+    def get_result(self, resultname, filetype=".rd0", run_id="0"):
         '''Reads Result from Result folder
 
         Note
@@ -156,13 +153,13 @@ class CST_Model:
 
         Parameters
         ----------
-        Resultname : str
-            Name of Result, must be located in self.ResultPath
+        resultname : str
+            Name of Result, must be located in self.RESULTPATH
         filetype : str, optional
             Currently only .rd0 files are implemented
-        runID : str, optional
-            get Result by runID
-            only runID 0 supported
+        run_id : str, optional
+            get Result by run_id
+            only run_id 0 supported
 
 
         Returns
@@ -171,15 +168,15 @@ class CST_Model:
             float of first line in corresponding filetype
 
         '''
-        if runID != "0":
+        if run_id != "0":
             raise AttributeError("Only runID '0' allowed")
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
-        Resultname = Resultname + filetype
-        file = open(self.ResultPath + Resultname, mode='r')
+        resultname = resultname + filetype
+        file = open(self.RESULTPATH + resultname, mode='r')
         return float(file.readline())
 
-    def getResults(self):
+    def get_results(self):
         '''Returns all rd0 results containesd in resultpath
 
         Returns
@@ -189,35 +186,33 @@ class CST_Model:
             values: float, result values
         '''
         res = {}
-        for resname in self.getResultNames():
-            res[resname] = self.getResult(resname)
+        for resultname in self.get_resultnames():
+            res[resultname] = self.get_result(resultname)
         return res
 
-    def getParams(self):
+    def get_parameters(self):
         '''Loads and returns all parametes
 
-        Returns all available parameter triplets as a list
-        in form [[parName, parEquation, parValue],]
 
         Returns
         -------
-        list
-            list of the above mentioned triplets
+        dictionary
+            {"parametername": {"equation": str, "value": float}}
         '''
         try:
             self.params
         except AttributeError:
-            self._loadParams()
+            self._load_parameters()
         return self.params
 
-    def _loadParams(self):
-        '''Loads and evaluates all parameters in parfile
+    def _load_parameters(self):
+        '''Loads and evaluates all parameters in Parfile
 
         Should read all cst file parameters and insert
         it in internal list self.params
 
         '''
-        def compute(params):
+        def compute_values(params):
             '''compute the value of all equations
             '''
 
@@ -287,27 +282,14 @@ class CST_Model:
         # neglection comment
         params = [x[:2] for x in params]
         params = sorted(params, key=lambda x: -len(x[0]))
-        params = compute(params)
-        self.params = params
+        params = compute_values(params)
+        # return dictionary as result
+        res = {}
+        for p in params:
+            res[p[0]] = {"equation": p[1], "value": float(p[2])}
+        self.params = res
 
-    def getParam(self, Paramname):
-        '''Returns name, formula and computed value of Parameter
-
-        Parameters
-        ----------
-        parname : string
-            The parameter whichs triplet should be returned.
-
-        Returns
-        -------
-        list
-            list[0]: name, list[1]: formula, list[2] value
-        '''
-        self.getParams()
-        names = [a[0].lower() for a in self.params]
-        return self.params[names.index(Paramname.lower())]
-
-    def isParam(self, Paramname):
+    def is_parameter(self, parametername):
         '''Check if parameter is existing
 
         Parameters
@@ -323,117 +305,32 @@ class CST_Model:
 
         '''
         try:
-            self.getParam(Paramname)
+            self.get_parameters()[parametername]
             return True
-        except ValueError:
+        except KeyError:
             return False
 
-    def editParams(self, Paramentervaluepairs: dict):
+    def edit_parameters(self, parameters_values: dict):
         '''Imports a dictionary of Parameters to cst file
 
         Parameters
         ----------
-        Paramentervaluepairs: dictianory
+        parameters_values: dictianory
             keys: Parameternames
             values: value
         '''
-        filename = self.FilePath + "par_tmp.par"
+        filename = self.FILEPATH + "par_tmp.par"
         file = open(filename, "w")
-        for key in Paramentervaluepairs:
-            assert self.isParam(key)
-            value = Paramentervaluepairs[key]
+        for key in parameters_values:
+            assert self.is_parameter(key)
+            value = parameters_values[key]
             line = key + "=" + str(value) + "\n"
             file.write(line)
         file.close()
-        assert os.path.isfile(self.filename)
+        assert os.path.isfile(self.FILENAME)
         self.cst_import_parfile(filename)
-        self._loadParams()
+        self._load_parameters()
         os.remove(filename)
-
-    def editParam(self, Paramname, value, method="scary"):
-        '''Edits the parameter value.
-
-        Edits the parameter value in the cst parameter file
-        This Script was created for CST 2017
-
-        Note
-        ----
-        Call cst_rebuild after editing all parameters
-        to update the geometry.
-
-        Parameters
-        ----------
-        parname : string
-            Parametername which should be edited.
-        value : int or float
-            Value which should be assigned to parameter
-        method : str
-            Use "scary" or "slow".
-
-            "scary" will edit entries in the .par-file
-            which is not recommended by cst staff
-
-            "slow" will call a cst routine,
-            but for more parameters its really slow.
-            You may use cst_import_parfile-method
-            and write your own .par file
-
-        '''
-
-        def scary(self, Paramname, value):
-            # the parameter file is a 771 chars long file ?
-            # all chars where i < 256 belong to the parameter name ?
-            # all chars where  255 < i < 513 belong to the equation ?
-            # all chars where i < 512 belong to comment ?
-            paramFile = open(self.parhandler.path, "r")
-            #  asserting its the pure paramname
-            Paramname = " " + Paramname + " "
-            assert self.parhandler.path[-4:] == ".par"
-            lines = paramFile.readlines()
-            count = 0  # we only want to find one line
-            name_end_idx = 255
-            for i, line in zip(range(len(lines)), lines):
-                assert len(line) == 771
-                if\
-                        Paramname.upper() in line[:name_end_idx + 2].upper()\
-                        and\
-                        line.replace(" ", "")[-3:-1] != "-1":
-                    index = i
-                    count += 1
-            assert count == 1
-            __v = str(value)
-            if len(__v) > 255:
-                print(__v)
-                raise AttributeError("value length bigger than 255")
-            # keeping name and comment
-            newline = lines[index][:256] + " " * \
-                (512 - 255 - len(__v)) + __v + lines[index][513:]
-            lines[index] = newline
-            assert len(newline) == 771
-            paramFile.close()
-            paramFile = open(self.parhandler.path, "w")
-            for l in lines:
-                paramFile.write(l)
-
-        def slow(self, Paramname, value,):
-            filename = self.FilePath + "par_tmp.par"
-            file = open(filename, "w")
-            file.write(Paramname + "=" + str(value))
-            file.close()
-            assert os.path.isfile(self.filename)
-            self.cst_import_parfile(filename)
-            os.remove(filename)
-
-        print("editParam is deprecated, use editParams instead")
-        methods = ["slow", "scary"]
-        assert method in methods
-        assert self.isParam(Paramname)
-        self.message(str(self), "setting", Paramname, "to", value)
-        if method == "slow":
-            slow(self, Paramname, value)
-        elif method == "scary":
-            scary(self, Paramname, value)
-        self._loadParams()
 
     def _run(self, flags, dc=None, timeout=None):
         '''Run cst command for this file.
@@ -461,7 +358,7 @@ class CST_Model:
         '''
         if dc:
             flags += "-withdc=" + str(dc) + " "
-        cmd = self.cst_path + flags + self.filename
+        cmd = self.CST_PATH + flags + self.FILENAME
         self.message(str(self), "running command:\n\t", cmd)
 
         # returncode = subprocess.call(cmd)
@@ -569,16 +466,16 @@ class CST_Model:
         self.toggle_mute(silent=True)
         return returncode
 
-    def cst_import_parfile(self, parfilepath, timeout=600):
+    def cst_import_parfile(self, Parfilepath, timeout=600):
         '''Runs CST routine for importing .par file.
 
         Note
         ----
-        flags = " -c -par " + parfilepath + " "
+        flags = " -c -par " + Parfilepath + " "
 
         Parameters
         ----------
-        parfilepath: str
+        Parfilepath: str
             Path to file which should be imported
             ending on ".par"
         timeout : int or float, optional
@@ -590,35 +487,35 @@ class CST_Model:
             returncode
 
         '''
-        assert os.path.isfile(parfilepath)
-        flags = " -c -par " + parfilepath + " "
-        self.message(str(self), "importing parameter from\n\t", parfilepath)
+        assert os.path.isfile(Parfilepath)
+        flags = " -c -par " + Parfilepath + " "
+        self.message(str(self), "importing parameter from\n\t", Parfilepath)
         self.toggle_mute(silent=True)
         returncode = self._run(flags)
         self.toggle_mute(silent=True)
         return returncode
 
     def __export_csv(self):
-        def gen_DataFrame():
-            '''Creates a dataframe of all results and parameters'''
+        def gen_dataframe():
+            '''Creates a pandas-dataframe of all results and parameters'''
             dct = {}
-            params = self.getParams()
-            for name, eq, val in params:
-                dct[name] = [val]
-            results = self.getResults()
+            params = self.get_parameters()
+            for key in params.keys():
+                dct[key] = [params[key]["value"]]
+            results = self.get_results()
             for key in results:
                 dct[key] = [results[key]]
             return DataFrame.from_dict(dct)
         delimiter = ";"
-        target = self.FilePath + self.csv_name
-        df = gen_DataFrame()
+        target = self.FILEPATH + self.csv_name
+        df = gen_dataframe()
         if os.path.isfile(target):
             df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
             df = pd.concat([df, df0], ignore_index=True)
         df.to_csv(target, sep=delimiter)
         print(str(self), "wrote to csv")
 
-    def sweep(self, Paramname, values, dc=None, flags=None):
+    def sweep(self, parametername, values, dc=None, flags=None):
         '''Performs a Eigenmode Sweep on the given values.
 
         Will perform a Eigenmode Sweep on the given values.
@@ -635,7 +532,7 @@ class CST_Model:
 
         Parameters
         ----------
-        Paramname : str
+        parametername : str
             The selected parameter to sweep.
 
         values : iterable(float or int)
@@ -650,18 +547,18 @@ class CST_Model:
         '''
 
         def check_args():
-            assert isinstance(Paramname, str)
+            assert isinstance(parametername, str)
             for v in values:
                 assert isinstance(v, float) or isinstance(v, int)
 
         check_args()
-        self.message(str(self), "sweeping", Paramname)
-        # value_init = self.getParam(Paramname)[1]
+        self.message(str(self), "sweeping", parametername)
+        # value_init = self.get_parameter(parametername)[1]
         self.parhandler.backup()
         # self.message("\tInitial value", value_init)
         for run, value in enumerate(values):
             self.message("\nRun", run, "/", len(value))
-            self.editParam(Paramname, value)
+            self.edit_paramert(parametername, value)
             self.cst_rebuild()
             if flags:
                 self._run(flags, dc)
@@ -670,19 +567,19 @@ class CST_Model:
         # resetting to initial value
         self.message(str(self), "resetting to initial value")
         self.parhandler.recover()
-        # self.editParam(Paramname, value_init)
+        # self.edit_paramert(parametername, value_init)
         # self.cst_rebuild()
 
 
-class parfile:
-    '''Class to handle parfile
+class Parfile:
+    '''Class to handle Parfile
 
     Parameters
     ----------
     path : str
         Path to "Model.par".
-    master_cav : :obj:`CST_Model`
-        Model corresponding to parfile.
+    master_cav : :obj:`CstModel`
+        Model corresponding to Parfile.
     autoanswer : str, optional
         None, "Y" or "n"
         How to answer question asked by input-funtion
@@ -699,7 +596,7 @@ class parfile:
         self._filetype = ".par"
         self._filetype_backup = ".parbackup"
         assert path[-len(self._filetype):] == self._filetype
-        assert isinstance(master_cav, CST_Model)
+        assert isinstance(master_cav, CstModel)
         if not os.path.isfile(path):
             raise FileNotFoundError(str(path))
         self._master_cav = master_cav
@@ -730,7 +627,7 @@ class parfile:
     def __handle_existing_backup(self):
         '''Handles previously created parameter-backups.
 
-        Deals with a existing parfile backup
+        Deals with a existing Parfile backup
         by asking to recover it
 
         Notes
@@ -741,13 +638,13 @@ class parfile:
 
         '''
         if os.path.isfile(self._path_backup):
-            self._master_cav.message("A parfile backup has been detected")
+            self._master_cav.message("A Parfile backup has been detected")
             if self.autoanswer:
                 answer = self.autoanswer
             else:
-                answer = input("[Y/n] Recover parameters from parfile?")
+                answer = input("[Y/n] Recover parameters from Parfile?")
             if answer in ["Y", "y"]:
-                self._master_cav.message("Recovering pramaters from parfile")
+                self._master_cav.message("Recovering pramaters from Parfile")
                 self.recover()
             else:
                 self._master_cav.message("Removing", self._path_backup)
@@ -756,15 +653,15 @@ class parfile:
 
 def TEST():
     path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
-    ih = CST_Model(path, autoanswer="A")
-    names = ih.getResultNames()
-    ih._loadParams()
-    assert ih.isParam("lackschmack") is False
-    assert ih.isParam("Mesh_model") is True
-    for a in ih.params:
-        print(a)
-    # print(ih.getParam("tuner_stem_angle"))
-    ih.editParam("shell_length", 6689)
+    ih = CstModel(path, autoanswer="A")
+    names = ih.get_resultnames()
+    print(names)
+    ih._load_parameters()
+    assert ih.is_parameter("lackschmack") is False
+    assert ih.is_parameter("Mesh_model") is True
+    # print(ih.params)
+    # print(ih.get_parameter("tuner_stem_angle"))
+    ih.edit_parameters({"Shell_length": 6689})
 
 
 if __name__ == "__main__":
