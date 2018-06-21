@@ -199,17 +199,15 @@ class CstModel:
         dictionary
             {"parametername": {"equation": str, "value": float}}
         '''
-        try:
-            self.params
-        except AttributeError:
-            self._load_parameters()
-        return self.params
+        self._load_parameters()
+        self.__params
+        return self.__params
 
     def _load_parameters(self):
         '''Loads and evaluates all parameters in Parfile
 
         Should read all cst file parameters and insert
-        it in internal list self.params
+        it in internal list self.__params
 
         '''
         def compute_values(params):
@@ -265,7 +263,7 @@ class CstModel:
                 if len(evaluated) == len(_params):
                     return params
 
-        self.message(str(self), "loading Parameters")
+        # self.message(str(self), "loading Parameters")
         file = open(self.parhandler.path, mode='r')
         # formatting
         params = [x for x in file.readlines()]
@@ -287,7 +285,7 @@ class CstModel:
         res = {}
         for p in params:
             res[p[0]] = {"equation": p[1], "value": float(p[2])}
-        self.params = res
+        self.__params = res
 
     def is_parameter(self, parametername):
         '''Check if parameter is existing
@@ -493,6 +491,7 @@ class CstModel:
         self.toggle_mute(silent=True)
         returncode = self._run(flags)
         self.toggle_mute(silent=True)
+        self.cst_rebuild()
         return returncode
 
     def __export_csv(self):
@@ -513,7 +512,7 @@ class CstModel:
             df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
             df = pd.concat([df, df0], ignore_index=True)
         df.to_csv(target, sep=delimiter)
-        print(str(self), "wrote to csv")
+        print(str(self), "wrote to csv", target)
 
     def sweep(self, parametername, values, dc=None, flags=None):
         '''Performs a Eigenmode Sweep on the given values.
@@ -660,9 +659,17 @@ def TEST():
     assert ih.is_parameter("lackschmack") is False
     assert ih.is_parameter("Mesh_model") is True
     # print(ih.params)
+    params = ih.get_parameters()
+    print(params)
     # print(ih.get_parameter("tuner_stem_angle"))
-    ih.edit_parameters({"Shell_length": 6689})
-
-
+    ih.edit_parameters({"Shell_length": 690,
+        "Mesh_model": 1,
+        "Mesh_local_tubes": 0,
+        "Mesh_background": 1,
+        "Mesh_local_vac": 0,
+        })
+    ih.cst_run_eigenmode()
+    res = ih.get_results()
+    print(res)
 if __name__ == "__main__":
     TEST()
