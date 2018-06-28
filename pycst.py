@@ -9,6 +9,8 @@ from pandas import DataFrame
 import pandas as pd
 import numpy as np
 import read
+import write
+import random
 
 
 class CstModel:
@@ -164,7 +166,7 @@ class CstModel:
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
         path = self.RESULTPATH + resultname + filetype
-        return read.read_rd0(path)
+        return read.read_one_liner(path)
 
     def get_results(self):
         '''Returns all rd0 results containesd in resultpath
@@ -189,93 +191,7 @@ class CstModel:
         dictionary
             {"parametername": {"equation": str, "value": float}}
         '''
-        self._load_parameters()
-        self.__params
-        return self.__params
-
-    def _load_parameters(self):
-        '''Loads and evaluates all parameters in Parfile
-
-        Should read all cst file parameters and insert
-        it in internal list self.__params
-
-        '''
-        def compute_values(params):
-            '''compute the value of all equations
-            '''
-
-            def evaluate():
-                '''try to evaluate all equations
-
-                Note
-                ----
-                _params and params will be edited
-                '''
-                for idx, p in enumerate(_params):
-                    equation = p[1]
-                    equation.replace("^", "**")
-                    try:
-                        if len(p) != 3:
-                            # for working
-                            p.append(eval(equation))
-                        if len(params[idx]) != 3:
-                            # for output
-                            params[idx].append(eval(equation))
-                    except NameError:
-                        pass
-
-            # working copy
-            # to apply .lower() without changing it in params
-            _params = copy.deepcopy(params)
-            evaluate()
-            while True:
-                evaluated = [p for p in _params if len(p) == 3]
-                for e in evaluated:
-                    name, val = e[0].lower(), e[2]
-                    for i, p in enumerate(_params):
-                        equation = p[1].lower()
-                        if name in equation:
-                            idx = equation.index(name) + len(name)
-                            if idx == len(equation):
-                                _params[i][1] = \
-                                    equation.replace(name, str(val))
-                            else:
-                                # mathematical symbols after name so that
-                                # following example cant happen
-                                # "ih" : 1,"ih_1" :9
-                                # "ih_1".replace(..)
-                                # "9_1"
-                                if equation[idx] in\
-                                   ["+", "-", "*", "/", "^", ")"]:
-                                    _params[i][1] = \
-                                        equation.replace(name, str(val))
-                evaluate()
-                if len(evaluated) == len(_params):
-                    return params
-
-        # self.message(str(self), "loading Parameters")
-        file = open(self.parhandler.path, mode='r')
-        # formatting
-        params = [x for x in file.readlines()]
-        params = [x.split("  ") for x in params]
-        params = [[a for a in x if a not in [""]] for x in params]
-        params = [[a.replace(" ", "") for a in x] for x in params]
-        params = [x for x in params if x[-1] != "-1\n"]
-        # assumption:
-        # [0]: name, [1]: equation, [2]: comment
-        # asserting assumtion
-        for p in params:
-            if len(p) > 3:
-                raise Exception("Bug occured, pleas fix here")
-        # neglection comment
-        params = [x[:2] for x in params]
-        params = sorted(params, key=lambda x: -len(x[0]))
-        params = compute_values(params)
-        # return dictionary as result
-        res = {}
-        for p in params:
-            res[p[0]] = {"equation": p[1], "value": float(p[2])}
-        self.__params = res
+        return read.eval_parfile(filepath=self.parhandler.path)
 
     def is_parameter(self, parametername):
         '''Check if parameter is existing
@@ -303,22 +219,16 @@ class CstModel:
 
         Parameters
         ----------
-        parameters_values: dictianory
+        parameters_values: dict
             keys: Parameternames
             values: value
         '''
         filename = self.FILEPATH + "par_tmp.par"
-        file = open(filename, "w")
         for key in parameters_values:
             assert self.is_parameter(key)
-            value = parameters_values[key]
-            line = key + "=" + str(value) + "\n"
-            file.write(line)
-        file.close()
         assert os.path.isfile(self.FILENAME)
-        self.cst_import_parfile(filename)
-        self._load_parameters()
-        os.remove(filename)
+        with write.parfile_tmp(filename, parameters_values):
+            self.cst_import_parfile(filename)
 
     def _run(self, flags, dc=None, timeout=None):
         '''Run cst command for this file.
@@ -353,8 +263,9 @@ class CstModel:
         p = subprocess.Popen(cmd)
         try:
             p.wait(timeout=timeout)
+            returncode = p.returncode
         except subprocess.TimeoutExpired:
-            return 1
+            returncode = 1
         # retcodes = {
         #     "0": "EXITCODE_SUCCESS",
         #     "1": "EXITCODE_FAILED",
@@ -362,14 +273,11 @@ class CstModel:
         #     "3": "EXITCODE_NOLICENSE",
         #     "4": "EXITCODE_FAILED_TO_OPEN",
         # }
-        # if p.returncode != 0:
-        #     print(self.__str__(),)
-        #     print("\tCommand", cmd)
-        #     print(
-        #         "\treturncode %s: %s"
-        #         (p.returncode, retcodes[str(p.returncode)])
-        #     )
-        return p.returncode
+        if returncode != 0:
+            print(self.__str__(),)
+            print("\tCommand", cmd)
+            print("\treturncode %s")
+        return returncode
 
     def cst_rebuild(self, timeout=5 * 60):
         '''CST History will be updated completely
@@ -495,13 +403,9 @@ class CstModel:
             for key in results:
                 dct[key] = [results[key]]
             return DataFrame.from_dict(dct)
-        delimiter = ";"
         target = self.FILEPATH + self.csv_name
         df = gen_dataframe()
-        if os.path.isfile(target):
-            df0 = pd.read_csv(target, delimiter=delimiter, index_col=0)
-            df = pd.concat([df, df0], ignore_index=True)
-        df.to_csv(target, sep=delimiter)
+        write.write_csv(filepath=target, dataframe=df)
         print(str(self), "wrote to csv", target)
 
     def sweep(self, parametername, values, dc=None, flags=None):
@@ -643,19 +547,20 @@ class Parfile:
 def TEST():
     path = "C:/Users/Simon/Desktop/Test2018/testfile2018.cst"
     ih = CstModel(path, autoanswer="A")
-    ih._load_parameters()
     assert ih.is_parameter("lackschmack") is False
     assert ih.is_parameter("Mesh_model") is True
     # print(ih.params)
     params = ih.get_parameters()
     print(params)
     # print(ih.get_parameter("tuner_stem_angle"))
-    ih.edit_parameters({"Shell_length": 690,
+    rand = random.randrange(900, 1200)
+    ih.edit_parameters({"Shell_length": rand,
                         "Mesh_model": 1,
                         "Mesh_local_tubes": 0,
                         "Mesh_background": 1,
                         "Mesh_local_vac": 0,
                         })
+    assert ih.get_parameters()["Shell_length"]["value"] == rand
     ih.cst_run_eigenmode()
     resnames = ih.get_resultnames()
     for r in resnames:
