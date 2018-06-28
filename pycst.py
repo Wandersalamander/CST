@@ -8,6 +8,7 @@ from pandas import DataFrame
 # from pandas import read_csv
 import pandas as pd
 import numpy as np
+import read
 
 
 class CstModel:
@@ -130,18 +131,8 @@ class CstModel:
         ------
         list
             All files in cst files ResultPath specified in __init__'''
-        assert isinstance(filetypes, list)
-        res = []
         ROOT = self.RESULTPATH
-        for path, subdirs, files in os.walk(ROOT):
-            for name in files:
-                resname = os.path.join(path, name)
-                resname = resname.replace("\\", "/")
-                resname = resname.replace(ROOT, "")
-                for ft in filetypes:
-                    if ft in resname:
-                        res.append(resname.replace(ft, ""))
-        return res
+        return read.get_files(path=ROOT, filetypes=filetypes)
 
     def get_result(self, resultname, filetype=".rd0", run_id="0"):
         '''Reads Result from Result folder
@@ -172,9 +163,8 @@ class CstModel:
             raise AttributeError("Only runID '0' allowed")
         if filetype != ".rd0":
             raise FileExistsError("Resulttype not implemented yet")
-        resultname = resultname + filetype
-        file = open(self.RESULTPATH + resultname, mode='r')
-        return float(file.readline())
+        path = self.RESULTPATH + resultname + filetype
+        return read.read_rd0(path)
 
     def get_results(self):
         '''Returns all rd0 results containesd in resultpath
