@@ -22,9 +22,9 @@ def get_files(path: str, filetypes: list):
     '''
     assert isinstance(filetypes, list)
     res = []
-    for path, subdirs, files in os.walk(path):
+    for _path, subdirs, files in os.walk(path):
         for name in files:
-            resname = os.path.join(path, name)
+            resname = os.path.join(_path, name)
             resname = resname.replace("\\", "/")
             resname = resname.replace(path, "")
             for ft in filetypes:
