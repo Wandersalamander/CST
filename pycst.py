@@ -69,12 +69,21 @@ class CstModel:
                 Configuration.__init__()
                 self.CST_PATH = Configuration.cst_path
 
-        self.parhandler = Parfile(
-            path="".join(self.FILENAME.split(".")[:-1]) +
-            "/Model/3D/Model.par",
-            master_cav=self,
-            autoanswer=autoanswer
-        )
+        try:
+            self.parhandler = Parfile(
+                path="".join(self.FILENAME.split(".")[:-1]) +
+                "/Model/3D/Model.par",
+                master_cav=self,
+                autoanswer=autoanswer
+            )
+        except FileNotFoundError:
+            self.cst_rebuild()
+            self.parhandler = Parfile(
+                path="".join(self.FILENAME.split(".")[:-1]) +
+                "/Model/3D/Model.par",
+                master_cav=self,
+                autoanswer=autoanswer
+            )
 
     def __str__(self):
         return self.FILENAME.split(
