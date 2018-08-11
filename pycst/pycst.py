@@ -3,13 +3,13 @@ import time
 import shutil
 import copy
 import subprocess
-from config import Configuration
+from pycst.config import Configuration
 from pandas import DataFrame
 # from pandas import read_csv
 import pandas as pd
 import numpy as np
-import read
-import write
+import pycst.read as read
+import pycst.write as write
 import random
 
 
