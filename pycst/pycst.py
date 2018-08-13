@@ -239,6 +239,20 @@ class CstModel:
         with write.parfile_tmp(filename, parameters_values):
             self.cst_import_parfile(filename)
 
+    def add_parameters(self, parameters_values: dict):
+        '''Imports a dictionary of Parameters to cst file
+
+        Parameters
+        ----------
+        parameters_values: dict
+            keys: Parameternames
+            values: value
+        '''
+        filename = self.FILEPATH + "par_tmp.par"
+        assert os.path.isfile(self.FILENAME)
+        with write.parfile_tmp(filename, parameters_values):
+            self.cst_import_parfile(filename)
+
     def _run(self, flags, dc=None, timeout=None):
         '''Run cst command for this file.
 
